@@ -127,12 +127,22 @@ const Zimmetler = ({ user }) => {
   const handleIade = async (e) => {
     e.preventDefault()
     
+    if (!user || (!user.yoneticiYetkisi && !user.adminYetkisi)) {
+      toast({ 
+        title: 'Hata', 
+        description: 'Bu işlem için yönetici yetkisi gereklidir',
+        variant: 'destructive' 
+      })
+      return
+    }
+
     try {
       const response = await fetch('/api/zimmetler/iade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           zimmetId: selectedZimmet.id,
+          iadeAlanYetkiliId: user.id, // Otomatik login olan kullanıcı
           ...iadeFormData
         })
       })
