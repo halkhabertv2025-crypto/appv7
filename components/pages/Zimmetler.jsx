@@ -344,6 +344,7 @@ const Zimmetler = () => {
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Departman</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Zimmet Tarihi</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">İade Tarihi</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">İade Alan Yetkili</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Durum</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">İşlemler</th>
                   </tr>
