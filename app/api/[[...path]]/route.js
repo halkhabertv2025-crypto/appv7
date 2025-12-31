@@ -223,6 +223,7 @@ async function handleRoute(request, { params }) {
         telefon: body.telefon || '',
         departmanId: body.departmanId,
         durum: body.durum || 'Aktif',
+        yoneticiYetkisi: body.yoneticiYetkisi || false,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null
