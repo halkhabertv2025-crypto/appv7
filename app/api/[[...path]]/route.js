@@ -510,6 +510,18 @@ async function handleRoute(request, { params }) {
           const calisan = await db.collection('calisanlar').findOne({ id: zimmet.calisanId })
           const departman = calisan ? await db.collection('departmanlar').findOne({ id: calisan.departmanId }) : null
           const tip = envanter ? await db.collection('envanter_tipleri').findOne({ id: envanter.envanterTipiId }) : null
+          
+          // Get iade alan yetkili if exists
+          let iadeAlanYetkili = null
+          if (zimmet.iadeAlanYetkiliId) {
+            const yetkili = await db.collection('calisanlar').findOne({ id: zimmet.iadeAlanYetkiliId })
+            if (yetkili) {
+              iadeAlanYetkili = {
+                id: yetkili.id,
+                adSoyad: yetkili.adSoyad
+              }
+            }
+          }
 
           return {
             ...zimmet,
@@ -520,7 +532,8 @@ async function handleRoute(request, { params }) {
               seriNumarasi: envanter.seriNumarasi
             } : null,
             calisanAd: calisan?.adSoyad || 'Bilinmiyor',
-            departmanAd: departman?.ad || 'Bilinmiyor'
+            departmanAd: departman?.ad || 'Bilinmiyor',
+            iadeAlanYetkili
           }
         })
       )
