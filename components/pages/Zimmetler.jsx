@@ -217,7 +217,8 @@ const Zimmetler = () => {
     const zimmetInfo = [
       `Zimmet Tarihi: ${new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')}`,
       `Zimmet Durumu: ${turkishToAscii(zimmet.durum)}`,
-      zimmet.iadeTarihi ? `Iade Tarihi: ${new Date(zimmet.iadeTarihi).toLocaleDateString('tr-TR')}` : ''
+      zimmet.iadeTarihi ? `Iade Tarihi: ${new Date(zimmet.iadeTarihi).toLocaleDateString('tr-TR')}` : '',
+      zimmet.iadeAlanYetkili ? `Iade Alan Yetkili: ${turkishToAscii(zimmet.iadeAlanYetkili.adSoyad)}` : ''
     ].filter(Boolean)
     
     let yPos = 65
