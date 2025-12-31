@@ -171,14 +171,31 @@ const Zimmetler = () => {
   const generateZimmetPDF = (zimmet) => {
     const doc = new jsPDF()
     
+    // Türkçe karakter desteği için encoding ayarı
+    doc.setLanguage("tr")
+    
+    // Helper function to convert Turkish characters for PDF
+    const turkishToAscii = (text) => {
+      if (!text) return text
+      const charMap = {
+        'ç': 'c', 'Ç': 'C',
+        'ğ': 'g', 'Ğ': 'G',
+        'ı': 'i', 'İ': 'I',
+        'ö': 'o', 'Ö': 'O',
+        'ş': 's', 'Ş': 'S',
+        'ü': 'u', 'Ü': 'U'
+      }
+      return text.split('').map(char => charMap[char] || char).join('')
+    }
+    
     // Add logo if available
     doc.setFontSize(20)
     doc.setFont('helvetica', 'bold')
     doc.text('HRplan', 20, 20)
     
-    // Title
+    // Title - using ASCII equivalent
     doc.setFontSize(18)
-    doc.text('ZİMMET FORMU', 105, 40, { align: 'center' })
+    doc.text('ZIMMET FORMU', 105, 40, { align: 'center' })
     
     // Line
     doc.setLineWidth(0.5)
@@ -187,13 +204,13 @@ const Zimmetler = () => {
     // Zimmet Info
     doc.setFontSize(12)
     doc.setFont('helvetica', 'bold')
-    doc.text('ZİMMET BİLGİLERİ', 20, 55)
+    doc.text('ZIMMET BILGILERI', 20, 55)
     
     doc.setFont('helvetica', 'normal')
     const zimmetInfo = [
       `Zimmet Tarihi: ${new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')}`,
-      `Zimmet Durumu: ${zimmet.durum}`,
-      zimmet.iadeTarihi ? `İade Tarihi: ${new Date(zimmet.iadeTarihi).toLocaleDateString('tr-TR')}` : ''
+      `Zimmet Durumu: ${turkishToAscii(zimmet.durum)}`,
+      zimmet.iadeTarihi ? `Iade Tarihi: ${new Date(zimmet.iadeTarihi).toLocaleDateString('tr-TR')}` : ''
     ].filter(Boolean)
     
     let yPos = 65
@@ -205,26 +222,26 @@ const Zimmetler = () => {
     // Employee Info
     yPos += 10
     doc.setFont('helvetica', 'bold')
-    doc.text('ÇALIŞAN BİLGİLERİ', 20, yPos)
+    doc.text('CALISAN BILGILERI', 20, yPos)
     yPos += 10
     
     doc.setFont('helvetica', 'normal')
-    doc.text(`Ad Soyad: ${zimmet.calisanAd}`, 20, yPos)
+    doc.text(`Ad Soyad: ${turkishToAscii(zimmet.calisanAd)}`, 20, yPos)
     yPos += 8
-    doc.text(`Departman: ${zimmet.departmanAd}`, 20, yPos)
+    doc.text(`Departman: ${turkishToAscii(zimmet.departmanAd)}`, 20, yPos)
     
     // Inventory Info
     yPos += 18
     doc.setFont('helvetica', 'bold')
-    doc.text('ENVANTER BİLGİLERİ', 20, yPos)
+    doc.text('ENVANTER BILGILERI', 20, yPos)
     yPos += 10
     
     doc.setFont('helvetica', 'normal')
     const envanterInfo = [
-      `Envanter Tipi: ${zimmet.envanterBilgisi?.tip || '-'}`,
-      `Marka: ${zimmet.envanterBilgisi?.marka || '-'}`,
-      `Model: ${zimmet.envanterBilgisi?.model || '-'}`,
-      `Seri Numarası: ${zimmet.envanterBilgisi?.seriNumarasi || '-'}`
+      `Envanter Tipi: ${turkishToAscii(zimmet.envanterBilgisi?.tip || '-')}`,
+      `Marka: ${turkishToAscii(zimmet.envanterBilgisi?.marka || '-')}`,
+      `Model: ${turkishToAscii(zimmet.envanterBilgisi?.model || '-')}`,
+      `Seri Numarasi: ${turkishToAscii(zimmet.envanterBilgisi?.seriNumarasi || '-')}`
     ]
     
     envanterInfo.forEach(info => {
@@ -236,10 +253,11 @@ const Zimmetler = () => {
     if (zimmet.aciklama) {
       yPos += 10
       doc.setFont('helvetica', 'bold')
-      doc.text('AÇIKLAMA', 20, yPos)
+      doc.text('ACIKLAMA', 20, yPos)
       yPos += 10
       doc.setFont('helvetica', 'normal')
-      const splitText = doc.splitTextToSize(zimmet.aciklama, 170)
+      const convertedDesc = turkishToAscii(zimmet.aciklama)
+      const splitText = doc.splitTextToSize(convertedDesc, 170)
       doc.text(splitText, 20, yPos)
       yPos += splitText.length * 7
     }
@@ -252,7 +270,7 @@ const Zimmetler = () => {
     
     doc.setFontSize(10)
     doc.text('Teslim Eden', 40, yPos + 7, { align: 'center' })
-    doc.text('Teslim Alan (İmza)', 140, yPos + 7, { align: 'center' })
+    doc.text('Teslim Alan (Imza)', 140, yPos + 7, { align: 'center' })
     
     // Footer
     doc.setFontSize(8)
@@ -260,11 +278,13 @@ const Zimmetler = () => {
     doc.text('HRplan Zimmet Takip Sistemi', 105, 285, { align: 'center' })
     doc.text(new Date().toLocaleDateString('tr-TR'), 105, 290, { align: 'center' })
     
-    // Save
-    const fileName = `zimmet_${zimmet.calisanAd.replace(/\s+/g, '_')}_${zimmet.envanterBilgisi?.seriNumarasi || 'dokuman'}.pdf`
+    // Save - ASCII filename
+    const cleanName = turkishToAscii(zimmet.calisanAd).replace(/\s+/g, '_')
+    const cleanSerial = turkishToAscii(zimmet.envanterBilgisi?.seriNumarasi || 'dokuman')
+    const fileName = `zimmet_${cleanName}_${cleanSerial}.pdf`
     doc.save(fileName)
     
-    toast({ title: 'Başarılı', description: 'Zimmet PDF\'i indirildi' })
+    toast({ title: 'Basarili', description: 'Zimmet PDF\'i indirildi' })
   }
 
   const openCreateDialog = () => {
