@@ -29,6 +29,7 @@ export default function App() {
         <Header />
         <main className="flex-1 overflow-y-auto p-6">
           {currentPage === 'dashboard' && <Dashboard />}
+          {currentPage === 'benim-sayfam' && <BeninSayfam />}
           {currentPage === 'calisanlar' && <Calisanlar />}
           {currentPage === 'departmanlar' && <Departmanlar />}
           {currentPage === 'envanterler' && <Envanterler />}
