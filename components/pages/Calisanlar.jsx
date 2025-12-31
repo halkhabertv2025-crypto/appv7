@@ -97,7 +97,7 @@ const Calisanlar = ({ user }) => {
       })
       
       setShowDialog(false)
-      setFormData({ adSoyad: '', email: '', telefon: '', departmanId: '', durum: 'Aktif', yoneticiYetkisi: false })
+      setFormData({ adSoyad: '', email: '', telefon: '', departmanId: '', durum: 'Aktif', yoneticiYetkisi: false, adminYetkisi: false })
       setEditingCalisan(null)
       fetchCalisanlar()
     } catch (error) {
