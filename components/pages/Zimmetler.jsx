@@ -520,6 +520,29 @@ const Zimmetler = () => {
                 </div>
               )}
               <div>
+                <Label htmlFor="iadeAlanYetkiliId">İade Alan Yetkili *</Label>
+                <Select 
+                  value={iadeFormData.iadeAlanYetkiliId} 
+                  onValueChange={(value) => setIadeFormData({ ...iadeFormData, iadeAlanYetkiliId: value })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Yetkili seçin (Sadece yöneticiler)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yoneticiler.length > 0 ? (
+                      yoneticiler.map(yetkili => (
+                        <SelectItem key={yetkili.id} value={yetkili.id}>
+                          {yetkili.adSoyad} ({yetkili.departmanAd})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>Yönetici yetkisi olan çalışan bulunamadı</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label htmlFor="iadeTarihi">İade Tarihi *</Label>
                 <Input
                   id="iadeTarihi"
