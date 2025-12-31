@@ -376,6 +376,9 @@ const Zimmetler = () => {
                           : '-'
                         }
                       </td>
+                      <td className="py-3 px-4 text-sm">
+                        {zimmet.iadeAlanYetkili?.adSoyad || '-'}
+                      </td>
                       <td className="py-3 px-4">
                         <span className={cn(
                           "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
