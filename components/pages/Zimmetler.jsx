@@ -31,7 +31,8 @@ const Zimmetler = () => {
   })
   const [iadeFormData, setIadeFormData] = useState({
     iadeTarihi: new Date().toISOString().split('T')[0],
-    envanterDurumu: 'Depoda'
+    envanterDurumu: 'Depoda',
+    iadeAlanYetkiliId: ''
   })
   const { toast } = useToast()
 
