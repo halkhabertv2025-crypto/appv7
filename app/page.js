@@ -1,45 +1,41 @@
 'use client'
 
-import { useEffect } from "react";
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Sidebar from '@/components/layout/Sidebar'
+import Header from '@/components/layout/Header'
+import Dashboard from '@/components/pages/Dashboard'
+import Calisanlar from '@/components/pages/Calisanlar'
+import Departmanlar from '@/components/pages/Departmanlar'
+import Envanterler from '@/components/pages/Envanterler'
+import EnvanterTipleri from '@/components/pages/EnvanterTipleri'
+import Zimmetler from '@/components/pages/Zimmetler'
+import Ayarlar from '@/components/pages/Ayarlar'
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await fetch('/api/');
-      const data = await response.json();
-      console.log(data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+export default function App() {
+  const [currentPage, setCurrentPage] = useState('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" alt="Emergent" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar 
+        currentPage={currentPage} 
+        setCurrentPage={setCurrentPage}
+        isOpen={sidebarOpen}
+        setIsOpen={setSidebarOpen}
+      />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+        <main className="flex-1 overflow-y-auto p-6">
+          {currentPage === 'dashboard' && <Dashboard />}
+          {currentPage === 'calisanlar' && <Calisanlar />}
+          {currentPage === 'departmanlar' && <Departmanlar />}
+          {currentPage === 'envanterler' && <Envanterler />}
+          {currentPage === 'envanter-tipleri' && <EnvanterTipleri />}
+          {currentPage === 'zimmetler' && <Zimmetler />}
+          {currentPage === 'ayarlar' && <Ayarlar />}
+        </main>
+      </div>
     </div>
-  );
-};
-
-function App() {
-  return (
-    <div className="App">
-      <Home />
-    </div>
-  );
+  )
 }
-
-export default App;
