@@ -390,6 +390,49 @@ const Calisanlar = ({ user }) => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Şifre Sıfırlama Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Şifre Sıfırla</DialogTitle>
+          </DialogHeader>
+          {selectedCalisan && (
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="text-sm">
+                  <strong>{selectedCalisan.adSoyad}</strong> için yeni şifre belirleyin
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="yeniSifre">Yeni Şifre *</Label>
+                <Input
+                  id="yeniSifre"
+                  type="text"
+                  value={yeniSifre}
+                  onChange={(e) => setYeniSifre(e.target.value)}
+                  placeholder="Yeni şifre giriniz"
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowPasswordDialog(false)}
+                >
+                  İptal
+                </Button>
+                <Button 
+                  onClick={handleResetPassword}
+                  className="bg-teal-500 hover:bg-teal-600"
+                >
+                  Şifreyi Sıfırla
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
