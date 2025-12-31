@@ -23,7 +23,8 @@ const Calisanlar = () => {
     email: '',
     telefon: '',
     departmanId: '',
-    durum: 'Aktif'
+    durum: 'Aktif',
+    yoneticiYetkisi: false
   })
   const { toast } = useToast()
 
