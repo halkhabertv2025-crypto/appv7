@@ -366,6 +366,18 @@ const Calisanlar = ({ user }) => {
                   Yönetici Yetkisi (Zimmet iadesi alabilir)
                 </Label>
               </div>
+              {user?.adminYetkisi && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="adminYetkisi"
+                    checked={formData.adminYetkisi}
+                    onCheckedChange={(checked) => setFormData({ ...formData, adminYetkisi: checked })}
+                  />
+                  <Label htmlFor="adminYetkisi" className="text-sm font-normal cursor-pointer">
+                    Admin Yetkisi (Yönetici atayabilir, şifre sıfırlayabilir)
+                  </Label>
+                </div>
+              )}
             </div>
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
