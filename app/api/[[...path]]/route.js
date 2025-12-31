@@ -581,10 +581,30 @@ async function handleRoute(request, { params }) {
     if (route === '/zimmetler/iade' && method === 'POST') {
       const body = await request.json()
       
-      if (!body.zimmetId || !body.iadeTarihi || !body.envanterDurumu) {
+      if (!body.zimmetId || !body.iadeTarihi || !body.envanterDurumu || !body.iadeAlanYetkiliId) {
         return handleCORS(NextResponse.json(
-          { error: "Zimmet ID, iade tarihi ve envanter durumu zorunludur" },
+          { error: "Zimmet ID, iade tarihi, envanter durumu ve iade alan yetkili zorunludur" },
           { status: 400 }
+        ))
+      }
+
+      // Check if yetkili has manager permission
+      const yetkili = await db.collection('calisanlar').findOne({ 
+        id: body.iadeAlanYetkiliId, 
+        deletedAt: null 
+      })
+
+      if (!yetkili) {
+        return handleCORS(NextResponse.json(
+          { error: "Yetkili bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      if (!yetkili.yoneticiYetkisi) {
+        return handleCORS(NextResponse.json(
+          { error: "Bu işlem için yönetici yetkisi gereklidir" },
+          { status: 403 }
         ))
       }
 
@@ -606,6 +626,7 @@ async function handleRoute(request, { params }) {
         { 
           $set: { 
             iadeTarihi: new Date(body.iadeTarihi),
+            iadeAlanYetkiliId: body.iadeAlanYetkiliId,
             durum: 'İade Edildi',
             updatedAt: new Date()
           } 
