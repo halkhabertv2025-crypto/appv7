@@ -86,10 +86,6 @@ const Zimmetler = ({ user }) => {
       const data = await response.json()
       const active = data.filter(cal => cal.durum === 'Aktif')
       setCalisanlar(active)
-      
-      // Filter only managers for iade
-      const managers = data.filter(cal => cal.durum === 'Aktif' && cal.yoneticiYetkisi === true)
-      setYoneticiler(managers)
     } catch (error) {
       console.error('Çalışanlar yüklenemedi')
     }
