@@ -11,21 +11,25 @@ import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Checkbox } from '@/components/ui/checkbox'
 
-const Calisanlar = () => {
+const Calisanlar = ({ user }) => {
   const [calisanlar, setCalisanlar] = useState([])
   const [filteredCalisanlar, setFilteredCalisanlar] = useState([])
   const [departmanlar, setDepartmanlar] = useState([])
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
   const [editingCalisan, setEditingCalisan] = useState(null)
+  const [selectedCalisan, setSelectedCalisan] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [yeniSifre, setYeniSifre] = useState('')
   const [formData, setFormData] = useState({
     adSoyad: '',
     email: '',
     telefon: '',
     departmanId: '',
     durum: 'Aktif',
-    yoneticiYetkisi: false
+    yoneticiYetkisi: false,
+    adminYetkisi: false
   })
   const { toast } = useToast()
 
