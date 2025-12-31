@@ -45,6 +45,105 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json({ message: "HRplan API v1.0" }))
     }
 
+    // ============= AUTHENTICATION =============
+    if (route === '/auth/login' && method === 'POST') {
+      const body = await request.json()
+      
+      if (!body.email || !body.sifre) {
+        return handleCORS(NextResponse.json(
+          { error: "Email ve şifre zorunludur" },
+          { status: 400 }
+        ))
+      }
+
+      const calisan = await db.collection('calisanlar').findOne({ 
+        email: body.email, 
+        deletedAt: null 
+      })
+
+      if (!calisan) {
+        return handleCORS(NextResponse.json(
+          { error: "Email veya şifre hatalı" },
+          { status: 401 }
+        ))
+      }
+
+      if (calisan.sifre !== body.sifre) {
+        return handleCORS(NextResponse.json(
+          { error: "Email veya şifre hatalı" },
+          { status: 401 }
+        ))
+      }
+
+      if (calisan.durum !== 'Aktif') {
+        return handleCORS(NextResponse.json(
+          { error: "Hesabınız aktif değil" },
+          { status: 403 }
+        ))
+      }
+
+      // Check if user has manager or admin permission
+      if (!calisan.yoneticiYetkisi && !calisan.adminYetkisi) {
+        return handleCORS(NextResponse.json(
+          { error: "Bu sisteme giriş yapmak için yönetici veya admin yetkisi gereklidir" },
+          { status: 403 }
+        ))
+      }
+
+      // Get department name
+      const departman = await db.collection('departmanlar').findOne({ id: calisan.departmanId })
+
+      const userData = {
+        id: calisan.id,
+        adSoyad: calisan.adSoyad,
+        email: calisan.email,
+        departmanId: calisan.departmanId,
+        departmanAd: departman?.ad || 'Bilinmiyor',
+        yoneticiYetkisi: calisan.yoneticiYetkisi,
+        adminYetkisi: calisan.adminYetkisi,
+        token: uuidv4() // Simple token for session
+      }
+
+      return handleCORS(NextResponse.json(userData))
+    }
+
+    if (route === '/auth/me' && method === 'GET') {
+      const authHeader = request.headers.get('authorization')
+      if (!authHeader) {
+        return handleCORS(NextResponse.json(
+          { error: "Yetkilendirme gerekli" },
+          { status: 401 }
+        ))
+      }
+
+      // For simplicity, we're using email as identifier
+      // In production, use proper JWT tokens
+      const email = authHeader.replace('Bearer ', '')
+      const calisan = await db.collection('calisanlar').findOne({ 
+        email, 
+        deletedAt: null 
+      })
+
+      if (!calisan) {
+        return handleCORS(NextResponse.json(
+          { error: "Kullanıcı bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      const departman = await db.collection('departmanlar').findOne({ id: calisan.departmanId })
+
+      return handleCORS(NextResponse.json({
+        id: calisan.id,
+        adSoyad: calisan.adSoyad,
+        email: calisan.email,
+        departmanId: calisan.departmanId,
+        departmanAd: departman?.ad || 'Bilinmiyor',
+        yoneticiYetkisi: calisan.yoneticiYetkisi,
+        adminYetkisi: calisan.adminYetkisi
+      }))
+    }
+
     // ============= DASHBOARD =============
     if (route === '/dashboard' && method === 'GET') {
       const envanterler = await db.collection('envanterler')
