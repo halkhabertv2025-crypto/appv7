@@ -125,6 +125,39 @@ const Calisanlar = ({ user }) => {
     }
   }
 
+  const handleResetPassword = async () => {
+    if (!yeniSifre) {
+      toast({ title: 'Hata', description: 'Yeni şifre giriniz', variant: 'destructive' })
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/calisanlar/${selectedCalisan.id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ yeniSifre })
+      })
+
+      if (!response.ok) {
+        toast({ title: 'Hata', description: 'Şifre sıfırlanamadı', variant: 'destructive' })
+        return
+      }
+
+      toast({ title: 'Başarılı', description: 'Şifre başarıyla sıfırlandı' })
+      setShowPasswordDialog(false)
+      setYeniSifre('')
+      setSelectedCalisan(null)
+    } catch (error) {
+      toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
+    }
+  }
+
+  const openPasswordDialog = (calisan) => {
+    setSelectedCalisan(calisan)
+    setYeniSifre('')
+    setShowPasswordDialog(true)
+  }
+
   const openEditDialog = (calisan) => {
     setEditingCalisan(calisan)
     setFormData({
