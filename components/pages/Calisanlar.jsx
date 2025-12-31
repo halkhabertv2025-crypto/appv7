@@ -251,6 +251,16 @@ const Calisanlar = ({ user }) => {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex justify-end space-x-2">
+                          {user?.adminYetkisi && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => openPasswordDialog(calisan)}
+                              title="Şifre Sıfırla"
+                            >
+                              <Key size={16} />
+                            </Button>
+                          )}
                           <Button 
                             variant="outline" 
                             size="sm"
