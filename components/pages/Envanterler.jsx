@@ -1,0 +1,431 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Plus, Pencil, Trash2, Search, Filter, Download, Upload } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
+
+const Envanterler = () => {
+  const [envanterler, setEnvanterler] = useState([])
+  const [filteredEnvanterler, setFilteredEnvanterler] = useState([])
+  const [envanterTipleri, setEnvanterTipleri] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showDialog, setShowDialog] = useState(false)
+  const [editingEnvanter, setEditingEnvanter] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterDurum, setFilterDurum] = useState('all')
+  const [filterTip, setFilterTip] = useState('all')
+  const [formData, setFormData] = useState({
+    envanterTipiId: '',
+    marka: '',
+    model: '',
+    seriNumarasi: '',
+    durum: 'Depoda',
+    notlar: ''
+  })
+  const { toast } = useToast()
+
+  useEffect(() => {
+    fetchEnvanterler()
+    fetchEnvanterTipleri()
+  }, [])
+
+  useEffect(() => {
+    let filtered = envanterler
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(env => 
+        env.marka.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        env.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        env.seriNumarasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        env.envanterTipiAd.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Status filter
+    if (filterDurum !== 'all') {
+      filtered = filtered.filter(env => env.durum === filterDurum)
+    }
+
+    // Type filter
+    if (filterTip !== 'all') {
+      filtered = filtered.filter(env => env.envanterTipiId === filterTip)
+    }
+
+    setFilteredEnvanterler(filtered)
+  }, [searchTerm, filterDurum, filterTip, envanterler])
+
+  const fetchEnvanterler = async () => {
+    try {
+      const response = await fetch('/api/envanterler')
+      const data = await response.json()
+      setEnvanterler(data)
+      setFilteredEnvanterler(data)
+    } catch (error) {
+      toast({ title: 'Hata', description: 'Envanterler yüklenemedi', variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchEnvanterTipleri = async () => {
+    try {
+      const response = await fetch('/api/envanter-tipleri')
+      const data = await response.json()
+      setEnvanterTipleri(data)
+    } catch (error) {
+      console.error('Envanter tipleri yüklenemedi')
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    
+    try {
+      const url = editingEnvanter 
+        ? `/api/envanterler/${editingEnvanter.id}`
+        : '/api/envanterler'
+      
+      const response = await fetch(url, {
+        method: editingEnvanter ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast({ title: 'Hata', description: data.error, variant: 'destructive' })
+        return
+      }
+
+      toast({ 
+        title: 'Başarılı', 
+        description: editingEnvanter ? 'Envanter güncellendi' : 'Envanter oluşturuldu' 
+      })
+      
+      setShowDialog(false)
+      setFormData({
+        envanterTipiId: '',
+        marka: '',
+        model: '',
+        seriNumarasi: '',
+        durum: 'Depoda',
+        notlar: ''
+      })
+      setEditingEnvanter(null)
+      fetchEnvanterler()
+    } catch (error) {
+      toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!confirm('Bu envanteri silmek istediğinize emin misiniz?')) return
+
+    try {
+      const response = await fetch(`/api/envanterler/${id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        toast({ title: 'Hata', description: 'Envanter silinemedi', variant: 'destructive' })
+        return
+      }
+
+      toast({ title: 'Başarılı', description: 'Envanter silindi' })
+      fetchEnvanterler()
+    } catch (error) {
+      toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
+    }
+  }
+
+  const handleExport = () => {
+    const csv = [
+      ['Tip', 'Marka', 'Model', 'Seri Numarası', 'Durum', 'Zimmetli Kişi', 'Zimmet Tarihi', 'Notlar'].join(','),
+      ...filteredEnvanterler.map(env => [
+        env.envanterTipiAd,
+        env.marka,
+        env.model,
+        env.seriNumarasi,
+        env.durum,
+        env.zimmetBilgisi?.calisanAd || '',
+        env.zimmetBilgisi?.zimmetTarihi ? new Date(env.zimmetBilgisi.zimmetTarihi).toLocaleDateString('tr-TR') : '',
+        env.notlar
+      ].join(','))
+    ].join('\n')
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `envanterler_${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+
+    toast({ title: 'Başarılı', description: 'Envanter listesi dışa aktarıldı' })
+  }
+
+  const openEditDialog = (envanter) => {
+    setEditingEnvanter(envanter)
+    setFormData({
+      envanterTipiId: envanter.envanterTipiId,
+      marka: envanter.marka,
+      model: envanter.model,
+      seriNumarasi: envanter.seriNumarasi,
+      durum: envanter.durum,
+      notlar: envanter.notlar
+    })
+    setShowDialog(true)
+  }
+
+  const openCreateDialog = () => {
+    setEditingEnvanter(null)
+    setFormData({
+      envanterTipiId: '',
+      marka: '',
+      model: '',
+      seriNumarasi: '',
+      durum: 'Depoda',
+      notlar: ''
+    })
+    setShowDialog(true)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Envanterler</h2>
+          <p className="text-gray-500">Envanter listesi ve yönetimi</p>
+        </div>
+        <div className="flex space-x-2">
+          <Button onClick={handleExport} variant="outline">
+            <Download size={20} className="mr-2" />
+            Dışarı Aktar
+          </Button>
+          <Button onClick={openCreateDialog} className="bg-teal-500 hover:bg-teal-600">
+            <Plus size={20} className="mr-2" />
+            Yeni Envanter Oluştur
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div className="md:col-span-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <Input
+                  placeholder="Envanter ara..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div>
+              <Select value={filterTip} onValueChange={setFilterTip}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tip seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Tipler</SelectItem>
+                  {envanterTipleri.map(tip => (
+                    <SelectItem key={tip.id} value={tip.id}>{tip.ad}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Select value={filterDurum} onValueChange={setFilterDurum}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Durum seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Durumlar</SelectItem>
+                  <SelectItem value="Depoda">Depoda</SelectItem>
+                  <SelectItem value="Zimmetli">Zimmetli</SelectItem>
+                  <SelectItem value="Arızalı">Arızalı</SelectItem>
+                  <SelectItem value="Kayıp">Kayıp</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8">Yükleniyor...</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Envanter Tipi</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Marka</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Model</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Seri Numarası</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Durum</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Zimmetli Kişi</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Zimmet Tarihi</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEnvanterler.map((envanter) => (
+                    <tr key={envanter.id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4 text-sm font-medium">{envanter.envanterTipiAd}</td>
+                      <td className="py-3 px-4 text-sm">{envanter.marka}</td>
+                      <td className="py-3 px-4 text-sm">{envanter.model}</td>
+                      <td className="py-3 px-4 text-sm font-mono">{envanter.seriNumarasi}</td>
+                      <td className="py-3 px-4">
+                        <span className={cn(
+                          "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                          envanter.durum === 'Zimmetli' && "bg-green-100 text-green-800",
+                          envanter.durum === 'Depoda' && "bg-orange-100 text-orange-800",
+                          (envanter.durum === 'Arızalı' || envanter.durum === 'Kayıp') && "bg-red-100 text-red-800"
+                        )}>
+                          {envanter.durum}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {envanter.zimmetBilgisi?.calisanAd || '-'}
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {envanter.zimmetBilgisi?.zimmetTarihi 
+                          ? new Date(envanter.zimmetBilgisi.zimmetTarihi).toLocaleDateString('tr-TR')
+                          : '-'
+                        }
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => openEditDialog(envanter)}
+                          >
+                            <Pencil size={16} />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDelete(envanter.id)}
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredEnvanterler.length === 0 && (
+                <div className="text-center py-8 text-gray-500">Envanter bulunamadı</div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingEnvanter ? 'Envanter Düzenle' : 'Yeni Envanter Oluştur'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label htmlFor="envanterTipiId">Envanter Tipi *</Label>
+                <Select 
+                  value={formData.envanterTipiId} 
+                  onValueChange={(value) => setFormData({ ...formData, envanterTipiId: value })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Envanter tipi seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {envanterTipleri.map(tip => (
+                      <SelectItem key={tip.id} value={tip.id}>{tip.ad}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="marka">Marka *</Label>
+                <Input
+                  id="marka"
+                  value={formData.marka}
+                  onChange={(e) => setFormData({ ...formData, marka: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="model">Model *</Label>
+                <Input
+                  id="model"
+                  value={formData.model}
+                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="seriNumarasi">Seri Numarası *</Label>
+                <Input
+                  id="seriNumarasi"
+                  value={formData.seriNumarasi}
+                  onChange={(e) => setFormData({ ...formData, seriNumarasi: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="durum">Durum</Label>
+                <Select 
+                  value={formData.durum} 
+                  onValueChange={(value) => setFormData({ ...formData, durum: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Depoda">Depoda</SelectItem>
+                    <SelectItem value="Zimmetli">Zimmetli</SelectItem>
+                    <SelectItem value="Arızalı">Arızalı</SelectItem>
+                    <SelectItem value="Kayıp">Kayıp</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="notlar">Notlar</Label>
+                <Textarea
+                  id="notlar"
+                  value={formData.notlar}
+                  onChange={(e) => setFormData({ ...formData, notlar: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
+                İptal
+              </Button>
+              <Button type="submit" className="bg-teal-500 hover:bg-teal-600">
+                {editingEnvanter ? 'Güncelle' : 'Oluştur'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+export default Envanterler
