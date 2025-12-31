@@ -127,14 +127,15 @@ const Calisanlar = () => {
       email: calisan.email,
       telefon: calisan.telefon,
       departmanId: calisan.departmanId,
-      durum: calisan.durum
+      durum: calisan.durum,
+      yoneticiYetkisi: calisan.yoneticiYetkisi || false
     })
     setShowDialog(true)
   }
 
   const openCreateDialog = () => {
     setEditingCalisan(null)
-    setFormData({ adSoyad: '', email: '', telefon: '', departmanId: '', durum: 'Aktif' })
+    setFormData({ adSoyad: '', email: '', telefon: '', departmanId: '', durum: 'Aktif', yoneticiYetkisi: false })
     setShowDialog(true)
   }
 
