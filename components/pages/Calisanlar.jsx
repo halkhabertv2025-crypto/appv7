@@ -229,7 +229,12 @@ const Calisanlar = ({ user }) => {
                       <td className="py-3 px-4 text-sm text-gray-600">{calisan.telefon || '-'}</td>
                       <td className="py-3 px-4 text-sm text-gray-600">{calisan.departmanAd}</td>
                       <td className="py-3 px-4">
-                        {calisan.yoneticiYetkisi ? (
+                        {calisan.adminYetkisi ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            <Shield size={12} className="mr-1" />
+                            Admin
+                          </span>
+                        ) : calisan.yoneticiYetkisi ? (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             Yönetici
                           </span>
