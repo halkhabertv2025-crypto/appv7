@@ -11,6 +11,7 @@ import Envanterler from '@/components/pages/Envanterler'
 import EnvanterTipleri from '@/components/pages/EnvanterTipleri'
 import Zimmetler from '@/components/pages/Zimmetler'
 import Ayarlar from '@/components/pages/Ayarlar'
+import BeninSayfam from '@/components/pages/BeninSayfam'
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard')
