@@ -224,6 +224,8 @@ async function handleRoute(request, { params }) {
         departmanId: body.departmanId,
         durum: body.durum || 'Aktif',
         yoneticiYetkisi: body.yoneticiYetkisi || false,
+        adminYetkisi: body.adminYetkisi || false,
+        sifre: body.sifre || '123456', // Default password
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null
