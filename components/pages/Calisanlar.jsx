@@ -303,6 +303,16 @@ const Calisanlar = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="yoneticiYetkisi"
+                  checked={formData.yoneticiYetkisi}
+                  onCheckedChange={(checked) => setFormData({ ...formData, yoneticiYetkisi: checked })}
+                />
+                <Label htmlFor="yoneticiYetkisi" className="text-sm font-normal cursor-pointer">
+                  Yönetici Yetkisi (Zimmet iadesi alabilir)
+                </Label>
+              </div>
             </div>
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
