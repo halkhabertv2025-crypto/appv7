@@ -359,6 +359,32 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json({ success: true }))
     }
 
+    if (route.startsWith('/calisanlar/') && route.endsWith('/reset-password') && method === 'POST') {
+      const id = route.split('/')[2]
+      const body = await request.json()
+
+      if (!body.yeniSifre) {
+        return handleCORS(NextResponse.json(
+          { error: "Yeni şifre zorunludur" },
+          { status: 400 }
+        ))
+      }
+
+      const result = await db.collection('calisanlar').updateOne(
+        { id, deletedAt: null },
+        { $set: { sifre: body.yeniSifre, updatedAt: new Date() } }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Çalışan bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
     if (route.startsWith('/calisanlar/') && method === 'DELETE') {
       const id = route.split('/')[2]
 
