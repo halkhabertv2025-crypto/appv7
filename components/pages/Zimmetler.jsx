@@ -18,6 +18,7 @@ const Zimmetler = () => {
   const [filteredZimmetler, setFilteredZimmetler] = useState([])
   const [envanterler, setEnvanterler] = useState([])
   const [calisanlar, setCalisanlar] = useState([])
+  const [yoneticiler, setYoneticiler] = useState([])
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)
   const [showIadeDialog, setShowIadeDialog] = useState(false)
