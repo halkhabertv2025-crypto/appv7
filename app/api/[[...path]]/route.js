@@ -723,12 +723,12 @@ async function handleRoute(request, { params }) {
       
       if (!body.zimmetId || !body.iadeTarihi || !body.envanterDurumu || !body.iadeAlanYetkiliId) {
         return handleCORS(NextResponse.json(
-          { error: "Zimmet ID, iade tarihi, envanter durumu ve iade alan yetkili zorunludur" },
+          { error: "Zimmet ID, iade tarihi, envanter durumu ve yetkili ID zorunludur" },
           { status: 400 }
         ))
       }
 
-      // Check if yetkili has manager permission
+      // Yetkili kontrolü - must be manager or admin
       const yetkili = await db.collection('calisanlar').findOne({ 
         id: body.iadeAlanYetkiliId, 
         deletedAt: null 
@@ -741,9 +741,9 @@ async function handleRoute(request, { params }) {
         ))
       }
 
-      if (!yetkili.yoneticiYetkisi) {
+      if (!yetkili.yoneticiYetkisi && !yetkili.adminYetkisi) {
         return handleCORS(NextResponse.json(
-          { error: "Bu işlem için yönetici yetkisi gereklidir" },
+          { error: "Bu işlem için yönetici veya admin yetkisi gereklidir" },
           { status: 403 }
         ))
       }
