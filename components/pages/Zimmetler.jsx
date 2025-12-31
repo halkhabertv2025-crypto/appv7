@@ -13,12 +13,11 @@ import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import jsPDF from 'jspdf'
 
-const Zimmetler = () => {
+const Zimmetler = ({ user }) => {
   const [zimmetler, setZimmetler] = useState([])
   const [filteredZimmetler, setFilteredZimmetler] = useState([])
   const [envanterler, setEnvanterler] = useState([])
   const [calisanlar, setCalisanlar] = useState([])
-  const [yoneticiler, setYoneticiler] = useState([])
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)
   const [showIadeDialog, setShowIadeDialog] = useState(false)
@@ -32,8 +31,7 @@ const Zimmetler = () => {
   })
   const [iadeFormData, setIadeFormData] = useState({
     iadeTarihi: new Date().toISOString().split('T')[0],
-    envanterDurumu: 'Depoda',
-    iadeAlanYetkiliId: ''
+    envanterDurumu: 'Depoda'
   })
   const { toast } = useToast()
 
