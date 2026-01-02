@@ -455,6 +455,15 @@ const Calisanlar = ({ user }) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Çalışan Detay Panel */}
+      {showDetayPanel && detayCalisan && (
+        <CalisanDetay 
+          calisan={detayCalisan} 
+          onClose={closeDetayPanel}
+          user={user}
+        />
+      )}
     </div>
   )
 }
