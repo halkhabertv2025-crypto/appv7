@@ -2,7 +2,7 @@ import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 
 export const metadata = {
-  title: 'HRplan - Zimmet ve Envanter Takip',
+  title: 'Halk TV - Zimmet ve Envanter Takip',
   description: 'İşyeri cihazlarını çalışanlara zimmetleyip takip edin',
 }
 
