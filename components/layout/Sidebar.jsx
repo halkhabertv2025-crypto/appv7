@@ -106,7 +106,7 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
       <div className="flex items-center justify-between p-4 border-b border-gray-700">
         {isOpen && (
           <div className="flex items-center space-x-2">
-            <img src="/logo.png" alt="HRplan" className="h-8" />
+            <img src="/logo.png" alt="Halk TV" className="h-8" />
           </div>
         )}
         <button 
