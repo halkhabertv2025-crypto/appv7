@@ -287,7 +287,7 @@ const Zimmetler = ({ user }) => {
     // Footer
     doc.setFontSize(8)
     doc.setTextColor(128)
-    doc.text('HRplan Zimmet Takip Sistemi', 105, 285, { align: 'center' })
+    doc.text('Halk TV Zimmet Takip Sistemi', 105, 285, { align: 'center' })
     doc.text(new Date().toLocaleDateString('tr-TR'), 105, 290, { align: 'center' })
     
     // Save - ASCII filename
