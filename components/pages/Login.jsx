@@ -61,9 +61,9 @@ const Login = ({ onLogin }) => {
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center space-y-2">
           <div className="flex justify-center mb-4">
-            <img src="/logo.png" alt="HRplan" className="h-16" />
+            <img src="/logo.png" alt="Halk TV" className="h-16" />
           </div>
-          <CardTitle className="text-2xl font-bold">HRplan</CardTitle>
+          <CardTitle className="text-2xl font-bold">Halk TV</CardTitle>
           <p className="text-gray-500">Zimmet ve Envanter Takip Sistemi</p>
         </CardHeader>
         <CardContent>
