@@ -359,6 +359,34 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json({ success: true }))
     }
 
+    if (route.startsWith('/calisanlar/') && route.endsWith('/zimmetler') && method === 'GET') {
+      const id = route.split('/')[2]
+      
+      const zimmetler = await db.collection('zimmetler')
+        .find({ calisanId: id, deletedAt: null })
+        .sort({ createdAt: -1 })
+        .toArray()
+      
+      const enrichedZimmetler = await Promise.all(
+        zimmetler.map(async (zimmet) => {
+          const envanter = await db.collection('envanterler').findOne({ id: zimmet.envanterId })
+          const tip = envanter ? await db.collection('envanter_tipleri').findOne({ id: envanter.envanterTipiId }) : null
+
+          return {
+            ...zimmet,
+            envanterBilgisi: envanter ? {
+              tip: tip?.ad || '',
+              marka: envanter.marka,
+              model: envanter.model,
+              seriNumarasi: envanter.seriNumarasi
+            } : null
+          }
+        })
+      )
+
+      return handleCORS(NextResponse.json(enrichedZimmetler.map(({ _id, ...rest }) => rest)))
+    }
+
     if (route.startsWith('/calisanlar/') && route.endsWith('/reset-password') && method === 'POST') {
       const id = route.split('/')[2]
       const body = await request.json()
