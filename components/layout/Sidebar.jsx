@@ -10,8 +10,6 @@ import {
   ChevronDown,
   ChevronRight,
   User,
-  Briefcase,
-  Plane,
   Receipt,
   FileText
 } from 'lucide-react'
