@@ -19,8 +19,10 @@ const Calisanlar = ({ user }) => {
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [showDetayPanel, setShowDetayPanel] = useState(false)
   const [editingCalisan, setEditingCalisan] = useState(null)
   const [selectedCalisan, setSelectedCalisan] = useState(null)
+  const [detayCalisan, setDetayCalisan] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [yeniSifre, setYeniSifre] = useState('')
   const [formData, setFormData] = useState({
