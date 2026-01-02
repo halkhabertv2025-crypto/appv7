@@ -59,11 +59,6 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
       icon: Building2 
     },
     {
-      id: 'organizasyonum',
-      label: 'Organizasyonum',
-      icon: Briefcase
-    },
-    {
       id: 'envanter-zimmet',
       label: 'Envanter ve Zimmet',
       icon: Package,
@@ -75,11 +70,6 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
         { id: 'envanter-tipleri', label: 'Envanter Tipleri' },
         { id: 'zimmetler', label: 'Zimmetler' }
       ]
-    },
-    {
-      id: 'seyahat-islemleri',
-      label: 'Seyahat İşlemleri',
-      icon: Plane
     },
     {
       id: 'arans-harcama',
