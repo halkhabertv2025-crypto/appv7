@@ -161,6 +161,17 @@ const Calisanlar = ({ user }) => {
     setShowPasswordDialog(true)
   }
 
+  const openDetayPanel = (calisan) => {
+    setDetayCalisan(calisan)
+    setShowDetayPanel(true)
+  }
+
+  const closeDetayPanel = () => {
+    setShowDetayPanel(false)
+    setDetayCalisan(null)
+    fetchCalisanlar() // Refresh data after potential changes
+  }
+
   const openEditDialog = (calisan) => {
     setEditingCalisan(calisan)
     setFormData({
