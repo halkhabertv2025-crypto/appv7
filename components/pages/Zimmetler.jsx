@@ -202,7 +202,7 @@ const Zimmetler = ({ user }) => {
     // Add logo if available
     doc.setFontSize(20)
     doc.setFont('helvetica', 'bold')
-    doc.text('HRplan', 20, 20)
+    doc.text('Halk TV', 20, 20)
     
     // Title - using ASCII equivalent
     doc.setFontSize(18)
