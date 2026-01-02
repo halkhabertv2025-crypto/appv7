@@ -265,6 +265,14 @@ const Calisanlar = ({ user }) => {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex justify-end space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => openDetayPanel(calisan)}
+                            title="Detayları Görüntüle"
+                          >
+                            <Eye size={16} />
+                          </Button>
                           {user?.adminYetkisi && (
                             <Button 
                               variant="outline" 
