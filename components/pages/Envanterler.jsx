@@ -109,15 +109,40 @@ const Envanterler = ({ user }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
+    // Eğer düzenleme modundaysa ve durum "Zimmetli" olarak değiştirilmişse
+    if (editingEnvanter && formData.durum === 'Zimmetli' && editingEnvanter.durum !== 'Zimmetli') {
+      // Zimmet dialog'unu aç
+      setSelectedEnvanterForZimmet(editingEnvanter)
+      setZimmetFormData({
+        calisanId: '',
+        zimmetTarihi: new Date().toISOString().split('T')[0],
+        aciklama: ''
+      })
+      setShowDialog(false)
+      setShowZimmetDialog(true)
+      return
+    }
+    
     try {
       const url = editingEnvanter 
         ? `/api/envanterler/${editingEnvanter.id}`
         : '/api/envanterler'
       
+      // Audit log için eski ve yeni durumu kaydet
+      const oldDurum = editingEnvanter?.durum
+      const newDurum = formData.durum
+      
       const response = await fetch(url, {
         method: editingEnvanter ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          // Audit log bilgileri
+          userId: user?.id,
+          userName: user?.adSoyad,
+          oldDurum: oldDurum,
+          logStatusChange: editingEnvanter && oldDurum !== newDurum
+        })
       })
 
       const data = await response.json()
@@ -140,6 +165,50 @@ const Envanterler = ({ user }) => {
         seriNumarasi: '',
         durum: 'Depoda',
         notlar: ''
+      })
+      setEditingEnvanter(null)
+      fetchEnvanterler()
+    } catch (error) {
+      toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
+    }
+  }
+
+  // Zimmet oluşturma
+  const handleZimmetSubmit = async (e) => {
+    e.preventDefault()
+    
+    if (!zimmetFormData.calisanId) {
+      toast({ title: 'Hata', description: 'Lütfen bir çalışan seçin', variant: 'destructive' })
+      return
+    }
+    
+    try {
+      const response = await fetch('/api/zimmetler', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          envanterId: selectedEnvanterForZimmet.id,
+          calisanId: zimmetFormData.calisanId,
+          zimmetTarihi: zimmetFormData.zimmetTarihi,
+          aciklama: zimmetFormData.aciklama
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast({ title: 'Hata', description: data.error, variant: 'destructive' })
+        return
+      }
+
+      toast({ title: 'Başarılı', description: 'Envanter zimmetlendi' })
+      
+      setShowZimmetDialog(false)
+      setSelectedEnvanterForZimmet(null)
+      setZimmetFormData({
+        calisanId: '',
+        zimmetTarihi: new Date().toISOString().split('T')[0],
+        aciklama: ''
       })
       setEditingEnvanter(null)
       fetchEnvanterler()
