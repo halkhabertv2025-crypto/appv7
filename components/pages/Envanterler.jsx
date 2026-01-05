@@ -95,6 +95,17 @@ const Envanterler = ({ user }) => {
     }
   }
 
+  const fetchCalisanlar = async () => {
+    try {
+      const response = await fetch('/api/calisanlar')
+      const data = await response.json()
+      const active = data.filter(cal => cal.durum === 'Aktif')
+      setCalisanlar(active)
+    } catch (error) {
+      console.error('Çalışanlar yüklenemedi')
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
