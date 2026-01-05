@@ -1005,6 +1005,143 @@ async function handleRoute(request, { params }) {
       }))
     }
 
+    // ============= AUDIT LOGS =============
+    if (route === '/audit-logs' && method === 'GET') {
+      const { actorUserId, actionType, entityType, startDate, endDate, page = 1, limit = 50 } = 
+        Object.fromEntries(new URL(request.url).searchParams)
+
+      const query = {}
+      if (actorUserId) query.actorUserId = actorUserId
+      if (actionType) query.actionType = actionType
+      if (entityType) query.entityType = entityType
+      if (startDate || endDate) {
+        query.createdAt = {}
+        if (startDate) query.createdAt.$gte = new Date(startDate)
+        if (endDate) query.createdAt.$lte = new Date(endDate)
+      }
+
+      const skip = (parseInt(page) - 1) * parseInt(limit)
+      
+      const logs = await db.collection('audit_logs')
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .toArray()
+
+      const total = await db.collection('audit_logs').countDocuments(query)
+
+      return handleCORS(NextResponse.json({
+        logs: logs.map(({ _id, ...rest }) => rest),
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / parseInt(limit))
+        }
+      }))
+    }
+
+    // ============= ACCESSORIES =============
+    if (route.startsWith('/envanterler/') && route.endsWith('/accessories') && method === 'GET') {
+      const inventoryId = route.split('/')[2]
+      
+      const accessories = await db.collection('inventory_accessories')
+        .find({ inventoryId, deletedAt: null })
+        .sort({ createdAt: -1 })
+        .toArray()
+
+      return handleCORS(NextResponse.json(accessories.map(({ _id, ...rest }) => rest)))
+    }
+
+    if (route.startsWith('/envanterler/') && route.endsWith('/accessories') && method === 'POST') {
+      const inventoryId = route.split('/')[2]
+      const body = await request.json()
+
+      if (!body.ad) {
+        return handleCORS(NextResponse.json(
+          { error: "Aksesuar adı zorunludur" },
+          { status: 400 }
+        ))
+      }
+
+      // Check if serial number is unique if provided
+      if (body.seriNumarasi) {
+        const existing = await db.collection('inventory_accessories').findOne({
+          seriNumarasi: body.seriNumarasi,
+          deletedAt: null
+        })
+        if (existing) {
+          return handleCORS(NextResponse.json(
+            { error: "Bu seri numarası zaten kayıtlı" },
+            { status: 400 }
+          ))
+        }
+      }
+
+      const accessory = {
+        id: uuidv4(),
+        inventoryId,
+        ad: body.ad,
+        marka: body.marka || '',
+        model: body.model || '',
+        seriNumarasi: body.seriNumarasi || '',
+        durum: body.durum || 'Depoda',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null
+      }
+
+      await db.collection('inventory_accessories').insertOne(accessory)
+      const { _id, ...result } = accessory
+
+      return handleCORS(NextResponse.json(result))
+    }
+
+    if (route.match(/\/envanterler\/[^/]+\/accessories\/[^/]+$/) && method === 'PUT') {
+      const parts = route.split('/')
+      const accessoryId = parts[4]
+      const body = await request.json()
+
+      const updateData = {
+        ...body,
+        updatedAt: new Date()
+      }
+
+      const result = await db.collection('inventory_accessories').updateOne(
+        { id: accessoryId, deletedAt: null },
+        { $set: updateData }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Aksesuar bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
+    if (route.match(/\/envanterler\/[^/]+\/accessories\/[^/]+$/) && method === 'DELETE') {
+      const parts = route.split('/')
+      const accessoryId = parts[4]
+
+      const result = await db.collection('inventory_accessories').updateOne(
+        { id: accessoryId, deletedAt: null },
+        { $set: { deletedAt: new Date() } }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Aksesuar bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
     // Route not found
     return handleCORS(NextResponse.json(
       { error: `Route ${route} not found` }, 
