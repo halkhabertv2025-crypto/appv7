@@ -68,7 +68,7 @@ export default function App() {
           {currentPage === 'dashboard' && <Dashboard />}
           {currentPage === 'benim-sayfam' && <BeninSayfam />}
           {currentPage === 'calisanlar' && <Calisanlar user={user} />}
-          {currentPage === 'departmanlar' && <Departmanlar />}
+          {currentPage === 'departmanlar' && <Departmanlar user={user} />}
           {currentPage === 'envanterler' && <Envanterler user={user} />}
           {currentPage === 'envanter-tipleri' && <EnvanterTipleri />}
           {currentPage === 'zimmetler' && <Zimmetler user={user} />}
