@@ -31,21 +31,6 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
       label: 'Benim Sayfam', 
       icon: User 
     },
-    {
-      id: 'izin-islemleri',
-      label: 'İzin İşlemleri',
-      icon: ClipboardList,
-      isDropdown: true,
-      open: izinOpen,
-      setOpen: setIzinOpen,
-      children: [
-        { id: 'izin-talebi', label: 'İzin Talebi' },
-        { id: 'seyahat-talebi', label: 'Seyahat Talebi' },
-        { id: 'avans-talebi', label: 'Avans Talebi' },
-        { id: 'harcama-talebi', label: 'Harcama Talebi' },
-        { id: 'ulasim-konaklama', label: 'Ulaşım ve Konaklama Talebi' }
-      ]
-    },
     { 
       id: 'calisanlar', 
       label: 'Çalışanlar', 
@@ -68,16 +53,6 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
         { id: 'envanter-tipleri', label: 'Envanter Tipleri' },
         { id: 'zimmetler', label: 'Zimmetler' }
       ]
-    },
-    {
-      id: 'arans-harcama',
-      label: 'Arans ve Harcama',
-      icon: Receipt
-    },
-    {
-      id: 'raporlar',
-      label: 'Raporlar',
-      icon: FileText
     },
     { 
       id: 'ayarlar', 
