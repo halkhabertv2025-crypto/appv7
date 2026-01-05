@@ -304,6 +304,22 @@ async function handleRoute(request, { params }) {
         ))
       }
 
+      // Check admin authorization for role assignment
+      const authHeader = request.headers.get('x-user-id')
+      if ((body.adminYetkisi || body.yoneticiYetkisi) && authHeader) {
+        const requestingUser = await db.collection('calisanlar').findOne({ 
+          id: authHeader, 
+          deletedAt: null 
+        })
+        
+        if (!requestingUser || !requestingUser.adminYetkisi) {
+          return handleCORS(NextResponse.json(
+            { error: "Sadece admin kullanıcılar yetki atayabilir" },
+            { status: 403 }
+          ))
+        }
+      }
+
       // Check email uniqueness if provided
       if (body.email) {
         const existing = await db.collection('calisanlar').findOne({ email: body.email, deletedAt: null })
