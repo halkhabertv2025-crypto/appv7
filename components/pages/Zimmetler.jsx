@@ -59,8 +59,10 @@ const Zimmetler = ({ user }) => {
     try {
       const response = await fetch('/api/zimmetler')
       const data = await response.json()
-      setZimmetler(data)
-      setFilteredZimmetler(data)
+      // Sadece aktif zimmetleri göster (iade edilenler listeden çıksın)
+      const aktifZimmetler = data.filter(z => z.durum === 'Aktif')
+      setZimmetler(aktifZimmetler)
+      setFilteredZimmetler(aktifZimmetler)
     } catch (error) {
       toast({ title: 'Hata', description: 'Zimmetler yüklenemedi', variant: 'destructive' })
     } finally {
