@@ -267,8 +267,11 @@ async function handleRoute(request, { params }) {
       const id = route.split('/')[2]
       const body = await request.json()
 
+      const existingDept = await db.collection('departmanlar').findOne({ id, deletedAt: null })
+
+      const { userId, userName, ...updateFields } = body
       const updateData = {
-        ...body,
+        ...updateFields,
         updatedAt: new Date()
       }
 
@@ -284,11 +287,24 @@ async function handleRoute(request, { params }) {
         ))
       }
 
+      // Audit log
+      await createAuditLog(
+        userId || 'system',
+        userName || 'System',
+        'UPDATE_DEPARTMENT',
+        'Department',
+        id,
+        { departmentName: updateFields.ad || existingDept?.ad }
+      )
+
       return handleCORS(NextResponse.json({ success: true }))
     }
 
     if (route.startsWith('/departmanlar/') && method === 'DELETE') {
       const id = route.split('/')[2]
+      const body = await request.json().catch(() => ({}))
+
+      const existingDept = await db.collection('departmanlar').findOne({ id, deletedAt: null })
 
       const result = await db.collection('departmanlar').updateOne(
         { id, deletedAt: null },
@@ -301,6 +317,16 @@ async function handleRoute(request, { params }) {
           { status: 404 }
         ))
       }
+
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'DELETE_DEPARTMENT',
+        'Department',
+        id,
+        { departmentName: existingDept?.ad }
+      )
 
       return handleCORS(NextResponse.json({ success: true }))
     }
