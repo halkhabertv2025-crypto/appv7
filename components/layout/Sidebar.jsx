@@ -5,20 +5,16 @@ import {
   Users, 
   Building2, 
   Package, 
-  ClipboardList,
   Settings,
   ChevronDown,
   ChevronRight,
-  User,
-  Receipt,
-  FileText
+  User
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
   const [envanterOpen, setEnvanterOpen] = useState(true)
-  const [izinOpen, setIzinOpen] = useState(false)
 
   const menuItems = [
     { 
