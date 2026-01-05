@@ -447,8 +447,9 @@ async function handleRoute(request, { params }) {
         }
       }
 
+      const { userId, userName, ...updateFields } = body
       const updateData = {
-        ...body,
+        ...updateFields,
         updatedAt: new Date()
       }
 
@@ -463,6 +464,17 @@ async function handleRoute(request, { params }) {
           { status: 404 }
         ))
       }
+
+      // Audit log
+      const requestingUserForLog = authHeader ? await db.collection('calisanlar').findOne({ id: authHeader }) : null
+      await createAuditLog(
+        authHeader || userId || 'system',
+        requestingUserForLog?.adSoyad || userName || 'System',
+        'UPDATE_EMPLOYEE',
+        'Employee',
+        id,
+        { employeeName: existingCalisan?.adSoyad }
+      )
 
       return handleCORS(NextResponse.json({ success: true }))
     }
