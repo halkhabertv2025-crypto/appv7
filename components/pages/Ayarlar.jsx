@@ -62,6 +62,7 @@ export default function Ayarlar() {
     'DELETE_EMPLOYEE': 'Çalışan Silindi',
     'CREATE_INVENTORY': 'Envanter Oluşturuldu',
     'UPDATE_INVENTORY': 'Envanter Güncellendi',
+    'UPDATE_INVENTORY_STATUS': 'Envanter Durumu Değişti',
     'DELETE_INVENTORY': 'Envanter Silindi',
     'CREATE_ZIMMET': 'Zimmet Oluşturuldu',
     'RETURN_ZIMMET': 'Zimmet İade Alındı',
