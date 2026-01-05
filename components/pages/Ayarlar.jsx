@@ -125,14 +125,14 @@ export default function Ayarlar() {
                 <div>
                   <Label htmlFor="actionType">İşlem Türü</Label>
                   <Select 
-                    value={filters.actionType} 
-                    onValueChange={(value) => handleFilterChange('actionType', value)}
+                    value={filters.actionType || 'all'} 
+                    onValueChange={(value) => handleFilterChange('actionType', value === 'all' ? '' : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Tümü" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tümü</SelectItem>
+                      <SelectItem value="all">Tümü</SelectItem>
                       {Object.keys(actionTypeLabels).map(key => (
                         <SelectItem key={key} value={key}>
                           {actionTypeLabels[key]}
@@ -145,14 +145,14 @@ export default function Ayarlar() {
                 <div>
                   <Label htmlFor="entityType">Varlık Türü</Label>
                   <Select 
-                    value={filters.entityType} 
-                    onValueChange={(value) => handleFilterChange('entityType', value)}
+                    value={filters.entityType || 'all'} 
+                    onValueChange={(value) => handleFilterChange('entityType', value === 'all' ? '' : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Tümü" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tümü</SelectItem>
+                      <SelectItem value="all">Tümü</SelectItem>
                       {Object.keys(entityTypeLabels).map(key => (
                         <SelectItem key={key} value={key}>
                           {entityTypeLabels[key]}
