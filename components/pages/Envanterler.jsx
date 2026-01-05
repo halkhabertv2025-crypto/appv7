@@ -190,7 +190,9 @@ const Envanterler = ({ user }) => {
           envanterId: selectedEnvanterForZimmet.id,
           calisanId: zimmetFormData.calisanId,
           zimmetTarihi: zimmetFormData.zimmetTarihi,
-          aciklama: zimmetFormData.aciklama
+          aciklama: zimmetFormData.aciklama,
+          userId: user?.id,
+          userName: user?.adSoyad
         })
       })
 
@@ -222,7 +224,12 @@ const Envanterler = ({ user }) => {
 
     try {
       const response = await fetch(`/api/envanterler/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          userName: user?.adSoyad
+        })
       })
 
       if (!response.ok) {
