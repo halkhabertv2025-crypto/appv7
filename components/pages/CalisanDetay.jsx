@@ -219,6 +219,131 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
     toast({ title: 'Başarılı', description: 'Zimmet listesi dışa aktarıldı' })
   }
 
+  // Tüm zimmetleri tek PDF'de listele
+  const generateAllZimmetlerPDF = () => {
+    const turkishToAscii = (text) => {
+      if (!text) return text
+      const charMap = {
+        'ç': 'c', 'Ç': 'C',
+        'ğ': 'g', 'Ğ': 'G',
+        'ı': 'i', 'İ': 'I',
+        'ö': 'o', 'Ö': 'O',
+        'ş': 's', 'Ş': 'S',
+        'ü': 'u', 'Ü': 'U'
+      }
+      return text.split('').map(char => charMap[char] || char).join('')
+    }
+
+    // Sadece aktif zimmetleri al
+    const aktifZimmetler = zimmetler.filter(z => z.durum === 'Aktif')
+
+    if (aktifZimmetler.length === 0) {
+      toast({ title: 'Uyarı', description: 'Aktif zimmet bulunamadı', variant: 'destructive' })
+      return
+    }
+
+    const doc = new jsPDF()
+
+    // Logo / Header
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Halk TV', 20, 20)
+
+    // Title
+    doc.setFontSize(16)
+    doc.text('ZIMMET LISTESI', 105, 20, { align: 'center' })
+
+    doc.setLineWidth(0.5)
+    doc.line(20, 25, 190, 25)
+
+    // Employee Info
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('CALISAN BILGILERI', 20, 35)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10)
+    doc.text(`Ad Soyad: ${turkishToAscii(calisan.adSoyad)}`, 20, 43)
+    doc.text(`Departman: ${turkishToAscii(calisan.departmanAd)}`, 20, 50)
+    doc.text(`Email: ${calisan.email || '-'}`, 120, 43)
+    doc.text(`Telefon: ${calisan.telefon || '-'}`, 120, 50)
+
+    doc.setLineWidth(0.3)
+    doc.line(20, 55, 190, 55)
+
+    // Table Header
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text('ZIMMETLI ENVANTERLER', 20, 63)
+
+    // Create table data
+    const tableData = aktifZimmetler.map((zimmet, index) => [
+      (index + 1).toString(),
+      turkishToAscii(zimmet.envanterBilgisi?.tip || '-'),
+      turkishToAscii(zimmet.envanterBilgisi?.marka || '-'),
+      turkishToAscii(zimmet.envanterBilgisi?.model || '-'),
+      turkishToAscii(zimmet.envanterBilgisi?.seriNumarasi || '-'),
+      new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')
+    ])
+
+    // Use autoTable for the table
+    doc.autoTable({
+      startY: 68,
+      head: [['#', 'Tip', 'Marka', 'Model', 'Seri No', 'Zimmet Tarihi']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [0, 128, 128],
+        textColor: 255,
+        fontSize: 9,
+        fontStyle: 'bold'
+      },
+      bodyStyles: {
+        fontSize: 9
+      },
+      columnStyles: {
+        0: { cellWidth: 10 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 40 },
+        4: { cellWidth: 40 },
+        5: { cellWidth: 30 }
+      },
+      margin: { left: 20, right: 20 }
+    })
+
+    // Get final Y position after table
+    const finalY = doc.lastAutoTable.finalY + 15
+
+    // Summary
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Toplam Zimmetli Envanter: ${aktifZimmetler.length} adet`, 20, finalY)
+
+    // Signature section
+    const signatureY = finalY + 30
+    doc.setLineWidth(0.3)
+    doc.line(20, signatureY, 80, signatureY)
+    doc.line(110, signatureY, 170, signatureY)
+
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Teslim Eden', 40, signatureY + 7, { align: 'center' })
+    doc.text(`Teslim Alan: ${turkishToAscii(calisan.adSoyad)}`, 140, signatureY + 7, { align: 'center' })
+
+    // Footer
+    doc.setFontSize(8)
+    doc.setTextColor(128)
+    doc.text('Halk TV Zimmet Takip Sistemi', 105, 285, { align: 'center' })
+    doc.text(`Olusturma Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, 105, 290, { align: 'center' })
+
+    // Save
+    const cleanName = turkishToAscii(calisan.adSoyad).replace(/\s+/g, '_')
+    doc.save(`zimmet_listesi_${cleanName}_${new Date().toISOString().split('T')[0]}.pdf`)
+
+    toast({ title: 'Başarılı', description: 'Tüm zimmetler PDF olarak indirildi' })
+  }
+
   if (!calisan) return null
 
   return (
