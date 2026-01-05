@@ -838,6 +838,10 @@ async function handleRoute(request, { params }) {
 
     if (route.startsWith('/envanterler/') && method === 'DELETE') {
       const id = route.split('/')[2]
+      const body = await request.json().catch(() => ({}))
+
+      // Get envanter info before deletion
+      const existingEnvanter = await db.collection('envanterler').findOne({ id, deletedAt: null })
 
       const result = await db.collection('envanterler').updateOne(
         { id, deletedAt: null },
@@ -850,6 +854,20 @@ async function handleRoute(request, { params }) {
           { status: 404 }
         ))
       }
+
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'DELETE_INVENTORY',
+        'Inventory',
+        id,
+        { 
+          marka: existingEnvanter?.marka,
+          model: existingEnvanter?.model,
+          seriNumarasi: existingEnvanter?.seriNumarasi
+        }
+      )
 
       return handleCORS(NextResponse.json({ success: true }))
     }
