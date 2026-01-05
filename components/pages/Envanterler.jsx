@@ -8,17 +8,20 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2, Search, Filter, Download, Upload } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
-const Envanterler = () => {
+const Envanterler = ({ user }) => {
   const [envanterler, setEnvanterler] = useState([])
   const [filteredEnvanterler, setFilteredEnvanterler] = useState([])
   const [envanterTipleri, setEnvanterTipleri] = useState([])
+  const [calisanlar, setCalisanlar] = useState([])
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)
+  const [showZimmetDialog, setShowZimmetDialog] = useState(false)
   const [editingEnvanter, setEditingEnvanter] = useState(null)
+  const [selectedEnvanterForZimmet, setSelectedEnvanterForZimmet] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterDurum, setFilterDurum] = useState('all')
   const [filterTip, setFilterTip] = useState('all')
@@ -29,6 +32,11 @@ const Envanterler = () => {
     seriNumarasi: '',
     durum: 'Depoda',
     notlar: ''
+  })
+  const [zimmetFormData, setZimmetFormData] = useState({
+    calisanId: '',
+    zimmetTarihi: new Date().toISOString().split('T')[0],
+    aciklama: ''
   })
   const { toast } = useToast()
 
