@@ -416,6 +416,20 @@ async function handleRoute(request, { params }) {
     if (route.startsWith('/calisanlar/') && method === 'DELETE') {
       const id = route.split('/')[2]
 
+      // Check if employee has active zimmet
+      const activeZimmet = await db.collection('zimmetler').findOne({
+        calisanId: id,
+        durum: 'Aktif',
+        deletedAt: null
+      })
+
+      if (activeZimmet) {
+        return handleCORS(NextResponse.json(
+          { error: "Bu çalışanın üzerinde aktif zimmet var, silinemez. Önce zimmetleri iade alın." },
+          { status: 409 }
+        ))
+      }
+
       const result = await db.collection('calisanlar').updateOne(
         { id, deletedAt: null },
         { $set: { deletedAt: new Date() } }
