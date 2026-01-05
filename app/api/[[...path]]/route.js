@@ -754,6 +754,21 @@ async function handleRoute(request, { params }) {
       }
 
       await db.collection('envanterler').insertOne(envanter)
+      
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'CREATE_INVENTORY',
+        'Inventory',
+        envanter.id,
+        { 
+          marka: envanter.marka, 
+          model: envanter.model, 
+          seriNumarasi: envanter.seriNumarasi 
+        }
+      )
+      
       const { _id, ...result } = envanter
       return handleCORS(NextResponse.json(result))
     }
