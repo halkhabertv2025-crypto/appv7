@@ -698,8 +698,17 @@ async function handleRoute(request, { params }) {
       const id = route.split('/')[2]
       const body = await request.json()
 
+      // Get current envanter for comparison
+      const currentEnvanter = await db.collection('envanterler').findOne({ id, deletedAt: null })
+      if (!currentEnvanter) {
+        return handleCORS(NextResponse.json(
+          { error: "Envanter bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
       // Check if inventory has active zimmet before allowing status change
-      if (body.durum && body.durum !== 'Zimmetli') {
+      if (body.durum && body.durum !== 'Zimmetli' && body.durum !== currentEnvanter.durum) {
         const activeZimmet = await db.collection('zimmetler').findOne({
           envanterId: id,
           durum: 'Aktif',
@@ -714,8 +723,11 @@ async function handleRoute(request, { params }) {
         }
       }
 
+      // Remove audit-related fields from update data
+      const { userId, userName, oldDurum, logStatusChange, ...cleanBody } = body
+
       const updateData = {
-        ...body,
+        ...cleanBody,
         updatedAt: new Date()
       }
 
@@ -724,11 +736,22 @@ async function handleRoute(request, { params }) {
         { $set: updateData }
       )
 
-      if (result.matchedCount === 0) {
-        return handleCORS(NextResponse.json(
-          { error: "Envanter bulunamadı" },
-          { status: 404 }
-        ))
+      // Audit log for status change (Kayıp, Arızalı, Depoda)
+      if (logStatusChange && body.durum && body.durum !== oldDurum && body.durum !== 'Zimmetli') {
+        await createAuditLog(
+          userId || 'system',
+          userName || 'System',
+          'UPDATE_INVENTORY_STATUS',
+          'Inventory',
+          id,
+          {
+            marka: currentEnvanter.marka,
+            model: currentEnvanter.model,
+            seriNumarasi: currentEnvanter.seriNumarasi,
+            previousStatus: oldDurum,
+            newStatus: body.durum
+          }
+        )
       }
 
       return handleCORS(NextResponse.json({ success: true }))
