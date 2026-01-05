@@ -480,17 +480,30 @@ const Envanterler = ({ user }) => {
                 <Select 
                   value={formData.durum} 
                   onValueChange={(value) => setFormData({ ...formData, durum: value })}
+                  disabled={editingEnvanter?.durum === 'Zimmetli'}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Depoda">Depoda</SelectItem>
-                    <SelectItem value="Zimmetli">Zimmetli</SelectItem>
+                    {/* Zimmetli seçeneği sadece envanter zimmetliyse görünür */}
+                    {editingEnvanter?.durum === 'Zimmetli' && (
+                      <SelectItem value="Zimmetli">Zimmetli</SelectItem>
+                    )}
+                    {/* Zimmetli değilse, zimmetle seçeneği göster */}
+                    {editingEnvanter && editingEnvanter.durum !== 'Zimmetli' && (
+                      <SelectItem value="Zimmetli">Zimmetle</SelectItem>
+                    )}
                     <SelectItem value="Arızalı">Arızalı</SelectItem>
                     <SelectItem value="Kayıp">Kayıp</SelectItem>
                   </SelectContent>
                 </Select>
+                {editingEnvanter?.durum === 'Zimmetli' && (
+                  <p className="text-xs text-orange-600 mt-1">
+                    Zimmetli cihazın durumu değiştirilemez. Önce iade alın.
+                  </p>
+                )}
               </div>
               <div className="col-span-2">
                 <Label htmlFor="notlar">Notlar</Label>
@@ -508,6 +521,80 @@ const Envanterler = ({ user }) => {
               </Button>
               <Button type="submit" className="bg-teal-500 hover:bg-teal-600">
                 {editingEnvanter ? 'Güncelle' : 'Oluştur'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Zimmetleme Dialog */}
+      <Dialog open={showZimmetDialog} onOpenChange={setShowZimmetDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <UserPlus className="mr-2" size={20} />
+              Envanter Zimmetle
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleZimmetSubmit}>
+            <div className="space-y-4">
+              {selectedEnvanterForZimmet && (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="text-sm space-y-1">
+                    <div><span className="font-medium">Envanter:</span> {selectedEnvanterForZimmet.envanterTipiAd} {selectedEnvanterForZimmet.marka} {selectedEnvanterForZimmet.model}</div>
+                    <div><span className="font-medium">Seri No:</span> {selectedEnvanterForZimmet.seriNumarasi}</div>
+                  </div>
+                </div>
+              )}
+              <div>
+                <Label htmlFor="calisanId">Zimmetlenecek Çalışan *</Label>
+                <Select 
+                  value={zimmetFormData.calisanId} 
+                  onValueChange={(value) => setZimmetFormData({ ...zimmetFormData, calisanId: value })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Çalışan seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {calisanlar.map(cal => (
+                      <SelectItem key={cal.id} value={cal.id}>
+                        {cal.adSoyad} ({cal.departmanAd})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="zimmetTarihi">Zimmet Tarihi *</Label>
+                <Input
+                  id="zimmetTarihi"
+                  type="date"
+                  value={zimmetFormData.zimmetTarihi}
+                  onChange={(e) => setZimmetFormData({ ...zimmetFormData, zimmetTarihi: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="aciklama">Açıklama</Label>
+                <Textarea
+                  id="aciklama"
+                  value={zimmetFormData.aciklama}
+                  onChange={(e) => setZimmetFormData({ ...zimmetFormData, aciklama: e.target.value })}
+                  rows={2}
+                  placeholder="Ek bilgiler veya notlar..."
+                />
+              </div>
+            </div>
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={() => {
+                setShowZimmetDialog(false)
+                setSelectedEnvanterForZimmet(null)
+              }}>
+                İptal
+              </Button>
+              <Button type="submit" className="bg-teal-500 hover:bg-teal-600">
+                Zimmetle
               </Button>
             </DialogFooter>
           </form>
