@@ -535,6 +535,10 @@ async function handleRoute(request, { params }) {
 
     if (route.startsWith('/calisanlar/') && method === 'DELETE') {
       const id = route.split('/')[2]
+      const body = await request.json().catch(() => ({}))
+
+      // Get employee info before deletion
+      const existingCalisan = await db.collection('calisanlar').findOne({ id, deletedAt: null })
 
       // Check if employee has active zimmet
       const activeZimmet = await db.collection('zimmetler').findOne({
@@ -561,6 +565,16 @@ async function handleRoute(request, { params }) {
           { status: 404 }
         ))
       }
+
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'DELETE_EMPLOYEE',
+        'Employee',
+        id,
+        { employeeName: existingCalisan?.adSoyad }
+      )
 
       return handleCORS(NextResponse.json({ success: true }))
     }
