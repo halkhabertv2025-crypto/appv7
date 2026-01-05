@@ -43,6 +43,7 @@ const Envanterler = ({ user }) => {
   useEffect(() => {
     fetchEnvanterler()
     fetchEnvanterTipleri()
+    fetchCalisanlar()
   }, [])
 
   useEffect(() => {
