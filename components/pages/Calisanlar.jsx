@@ -84,7 +84,11 @@ const Calisanlar = ({ user }) => {
       const response = await fetch(url, {
         method: editingCalisan ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          userId: user?.id,
+          userName: user?.adSoyad
+        })
       })
 
       const data = await response.json()
@@ -113,11 +117,18 @@ const Calisanlar = ({ user }) => {
 
     try {
       const response = await fetch(`/api/calisanlar/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          userName: user?.adSoyad
+        })
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        toast({ title: 'Hata', description: 'Çalışan silinemedi', variant: 'destructive' })
+        toast({ title: 'Hata', description: data.error || 'Çalışan silinemedi', variant: 'destructive' })
         return
       }
 
