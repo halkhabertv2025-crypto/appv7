@@ -355,6 +355,28 @@ async function handleRoute(request, { params }) {
       const id = route.split('/')[2]
       const body = await request.json()
 
+      // Check admin authorization for role changes
+      const authHeader = request.headers.get('x-user-id')
+      const existingCalisan = await db.collection('calisanlar').findOne({ id, deletedAt: null })
+      
+      if ((body.adminYetkisi !== undefined || body.yoneticiYetkisi !== undefined) && authHeader) {
+        if (existingCalisan && 
+            (body.adminYetkisi !== existingCalisan.adminYetkisi || 
+             body.yoneticiYetkisi !== existingCalisan.yoneticiYetkisi)) {
+          const requestingUser = await db.collection('calisanlar').findOne({ 
+            id: authHeader, 
+            deletedAt: null 
+          })
+          
+          if (!requestingUser || !requestingUser.adminYetkisi) {
+            return handleCORS(NextResponse.json(
+              { error: "Sadece admin kullanıcılar yetki değiştirebilir" },
+              { status: 403 }
+            ))
+          }
+        }
+      }
+
       const updateData = {
         ...body,
         updatedAt: new Date()
