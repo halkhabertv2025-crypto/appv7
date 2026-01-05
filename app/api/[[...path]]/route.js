@@ -614,6 +614,22 @@ async function handleRoute(request, { params }) {
       const id = route.split('/')[2]
       const body = await request.json()
 
+      // Check if inventory has active zimmet before allowing status change
+      if (body.durum && body.durum !== 'Zimmetli') {
+        const activeZimmet = await db.collection('zimmetler').findOne({
+          envanterId: id,
+          durum: 'Aktif',
+          deletedAt: null
+        })
+
+        if (activeZimmet) {
+          return handleCORS(NextResponse.json(
+            { error: "Cihaz zimmetliyken durum değiştirilemez. Önce iade alın." },
+            { status: 409 }
+          ))
+        }
+      }
+
       const updateData = {
         ...body,
         updatedAt: new Date()
