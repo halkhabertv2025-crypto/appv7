@@ -907,8 +907,7 @@ async function handleRoute(request, { params }) {
         { $set: { durum: body.envanterDurumu, updatedAt: new Date() } }
       )
 
-      // Audit log
-      const yetkili = await db.collection('calisanlar').findOne({ id: body.iadeAlanYetkiliId })
+      // Audit log - yetkili already fetched above
       const calisan = await db.collection('calisanlar').findOne({ id: zimmet.calisanId })
       await createAuditLog(
         body.iadeAlanYetkiliId,
