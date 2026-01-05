@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
-const Departmanlar = () => {
+const Departmanlar = ({ user }) => {
   const [departmanlar, setDepartmanlar] = useState([])
   const [filteredDepartmanlar, setFilteredDepartmanlar] = useState([])
   const [loading, setLoading] = useState(true)
@@ -56,7 +56,11 @@ const Departmanlar = () => {
       const response = await fetch(url, {
         method: editingDepartman ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          userId: user?.id,
+          userName: user?.adSoyad
+        })
       })
 
       const data = await response.json()
@@ -85,7 +89,12 @@ const Departmanlar = () => {
 
     try {
       const response = await fetch(`/api/departmanlar/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          userName: user?.adSoyad
+        })
       })
 
       if (!response.ok) {
