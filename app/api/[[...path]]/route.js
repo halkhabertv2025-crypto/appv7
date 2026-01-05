@@ -408,9 +408,10 @@ async function handleRoute(request, { params }) {
       const { _id, ...result } = calisan
 
       // Audit log
+      const requestingUserForLog = authHeader ? await db.collection('calisanlar').findOne({ id: authHeader }) : null
       await createAuditLog(
-        authHeader || 'system',
-        'System',
+        authHeader || body.userId || 'system',
+        requestingUserForLog?.adSoyad || body.userName || 'System',
         'CREATE_EMPLOYEE',
         'Employee',
         calisan.id,
