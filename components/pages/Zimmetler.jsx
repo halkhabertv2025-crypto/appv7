@@ -173,8 +173,7 @@ const Zimmetler = ({ user }) => {
     setSelectedZimmet(zimmet)
     setIadeFormData({
       iadeTarihi: new Date().toISOString().split('T')[0],
-      envanterDurumu: 'Depoda',
-      iadeAlanYetkiliId: ''
+      envanterDurumu: 'Depoda'
     })
     setShowIadeDialog(true)
   }
