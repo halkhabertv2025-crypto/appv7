@@ -17,6 +17,27 @@ async function connectToMongo() {
   return db
 }
 
+// Audit Log Helper
+async function createAuditLog(actorUserId, actorUserName, actionType, entityType, entityId, details = {}) {
+  try {
+    const db = await connectToMongo()
+    const auditLog = {
+      id: uuidv4(),
+      actorUserId,
+      actorUserName,
+      actionType,
+      entityType,
+      entityId,
+      details,
+      createdAt: new Date()
+    }
+    await db.collection('audit_logs').insertOne(auditLog)
+  } catch (error) {
+    console.error('Audit log error:', error)
+    // Don't throw - audit should not break main flow
+  }
+}
+
 // Helper function to handle CORS
 function handleCORS(response) {
   response.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
