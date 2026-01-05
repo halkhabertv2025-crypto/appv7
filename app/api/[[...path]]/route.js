@@ -248,6 +248,17 @@ async function handleRoute(request, { params }) {
       }
 
       await db.collection('departmanlar').insertOne(departman)
+      
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'CREATE_DEPARTMENT',
+        'Department',
+        departman.id,
+        { departmentName: departman.ad }
+      )
+      
       const { _id, ...result } = departman
       return handleCORS(NextResponse.json(result))
     }
