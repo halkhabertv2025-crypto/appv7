@@ -100,7 +100,11 @@ const Zimmetler = ({ user }) => {
       const response = await fetch('/api/zimmetler', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          userId: user?.id,
+          userName: user?.adSoyad
+        })
       })
 
       const data = await response.json()
