@@ -349,8 +349,6 @@ const Zimmetler = ({ user }) => {
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Çalışan</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Departman</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Zimmet Tarihi</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">İade Tarihi</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">İade Alan Yetkili</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Durum</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">İşlemler</th>
                   </tr>
@@ -376,21 +374,8 @@ const Zimmetler = ({ user }) => {
                       <td className="py-3 px-4 text-sm">
                         {new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')}
                       </td>
-                      <td className="py-3 px-4 text-sm">
-                        {zimmet.iadeTarihi 
-                          ? new Date(zimmet.iadeTarihi).toLocaleDateString('tr-TR')
-                          : '-'
-                        }
-                      </td>
-                      <td className="py-3 px-4 text-sm">
-                        {zimmet.iadeAlanYetkili?.adSoyad || '-'}
-                      </td>
                       <td className="py-3 px-4">
-                        <span className={cn(
-                          "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                          zimmet.durum === 'Aktif' && "bg-green-100 text-green-800",
-                          zimmet.durum === 'İade Edildi' && "bg-gray-100 text-gray-800"
-                        )}>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           {zimmet.durum}
                         </span>
                       </td>
@@ -404,17 +389,15 @@ const Zimmetler = ({ user }) => {
                           >
                             <FileText size={16} />
                           </Button>
-                          {zimmet.durum === 'Aktif' && (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="text-orange-600 border-orange-600 hover:bg-orange-50"
-                              onClick={() => openIadeDialog(zimmet)}
-                              title="İade Al"
-                            >
-                              <CheckCircle size={16} />
-                            </Button>
-                          )}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                            onClick={() => openIadeDialog(zimmet)}
+                            title="İade Al"
+                          >
+                            <CheckCircle size={16} />
+                          </Button>
                         </div>
                       </td>
                     </tr>
