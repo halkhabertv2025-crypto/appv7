@@ -446,10 +446,12 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowDokumanDialog(true)}
+                  onClick={generateAllZimmetlerPDF}
+                  disabled={zimmetler.filter(z => z.durum === 'Aktif').length === 0}
+                  className="text-red-600 border-red-600 hover:bg-red-50"
                 >
-                  <Upload size={16} className="mr-2" />
-                  Döküman Yükle
+                  <FileText size={16} className="mr-2" />
+                  Tüm Zimmetler PDF
                 </Button>
                 <Button
                   variant="outline"
@@ -458,7 +460,7 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
                   disabled={zimmetler.length === 0}
                 >
                   <Download size={16} className="mr-2" />
-                  Dışarı Aktar
+                  CSV İndir
                 </Button>
                 <Button
                   onClick={() => setShowZimmetDialog(true)}
