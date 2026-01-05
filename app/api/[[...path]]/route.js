@@ -961,6 +961,24 @@ async function handleRoute(request, { params }) {
         { $set: { durum: 'Zimmetli', updatedAt: new Date() } }
       )
 
+      // Get envanter and calisan info for audit log
+      const envanter = await db.collection('envanterler').findOne({ id: body.envanterId })
+      const calisan = await db.collection('calisanlar').findOne({ id: body.calisanId })
+
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'CREATE_ZIMMET',
+        'Zimmet',
+        zimmet.id,
+        { 
+          employee: calisan?.adSoyad,
+          inventoryInfo: `${envanter?.marka} ${envanter?.model}`,
+          seriNumarasi: envanter?.seriNumarasi
+        }
+      )
+
       const { _id, ...result } = zimmet
       return handleCORS(NextResponse.json(result))
     }
