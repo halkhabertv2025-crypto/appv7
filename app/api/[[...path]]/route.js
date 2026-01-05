@@ -907,6 +907,23 @@ async function handleRoute(request, { params }) {
         { $set: { durum: body.envanterDurumu, updatedAt: new Date() } }
       )
 
+      // Audit log
+      const yetkili = await db.collection('calisanlar').findOne({ id: body.iadeAlanYetkiliId })
+      const calisan = await db.collection('calisanlar').findOne({ id: zimmet.calisanId })
+      await createAuditLog(
+        body.iadeAlanYetkiliId,
+        yetkili?.adSoyad || 'Unknown',
+        'RETURN_ZIMMET',
+        'Zimmet',
+        body.zimmetId,
+        { 
+          employee: calisan?.adSoyad,
+          inventoryId: zimmet.envanterId,
+          returnDate: body.iadeTarihi,
+          inventoryStatus: body.envanterDurumu
+        }
+      )
+
       return handleCORS(NextResponse.json({ success: true }))
     }
 
