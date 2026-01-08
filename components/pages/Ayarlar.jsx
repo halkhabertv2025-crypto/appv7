@@ -69,6 +69,10 @@ export default function Ayarlar() {
     'DELETE_DEPARTMENT': 'Departman Silindi',
     'CREATE_ZIMMET': 'Zimmet Oluşturuldu',
     'RETURN_ZIMMET': 'Zimmet İade Alındı',
+    'CREATE_DIGITAL_ASSET': 'Dijital Varlık Oluşturuldu',
+    'UPDATE_DIGITAL_ASSET': 'Dijital Varlık Güncellendi',
+    'DELETE_DIGITAL_ASSET': 'Dijital Varlık Silindi',
+    'CREATE_DIGITAL_ASSET_CATEGORY': 'Dijital Varlık Kategorisi Oluşturuldu',
     'ASSIGN_ROLE': 'Rol Atandı',
     'IMPORT_INVENTORY': 'Envanter İçe Aktarıldı',
     'EXPORT_INVENTORY': 'Envanter Dışa Aktarıldı'
