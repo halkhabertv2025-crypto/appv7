@@ -1307,6 +1307,217 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json({ success: true }))
     }
 
+    // ============= DİJİTAL VARLIK KATEGORİLERİ =============
+    if (route === '/dijital-varlik-kategorileri' && method === 'GET') {
+      const kategoriler = await db.collection('dijital_varlik_kategorileri')
+        .find({ deletedAt: null })
+        .sort({ ad: 1 })
+        .toArray()
+
+      return handleCORS(NextResponse.json(kategoriler.map(({ _id, ...rest }) => rest)))
+    }
+
+    if (route === '/dijital-varlik-kategorileri' && method === 'POST') {
+      const body = await request.json()
+
+      if (!body.ad) {
+        return handleCORS(NextResponse.json(
+          { error: "Kategori adı zorunludur" },
+          { status: 400 }
+        ))
+      }
+
+      const kategori = {
+        id: uuidv4(),
+        ad: body.ad,
+        aciklama: body.aciklama || '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null
+      }
+
+      await db.collection('dijital_varlik_kategorileri').insertOne(kategori)
+
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'CREATE_DIGITAL_ASSET_CATEGORY',
+        'DigitalAssetCategory',
+        kategori.id,
+        { categoryName: kategori.ad }
+      )
+
+      const { _id, ...result } = kategori
+      return handleCORS(NextResponse.json(result))
+    }
+
+    if (route.startsWith('/dijital-varlik-kategorileri/') && method === 'DELETE') {
+      const id = route.split('/')[2]
+      const body = await request.json().catch(() => ({}))
+
+      const result = await db.collection('dijital_varlik_kategorileri').updateOne(
+        { id, deletedAt: null },
+        { $set: { deletedAt: new Date() } }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Kategori bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
+    // ============= DİJİTAL VARLIKLAR =============
+    if (route === '/dijital-varliklar' && method === 'GET') {
+      const dijitalVarliklar = await db.collection('dijital_varliklar')
+        .find({ deletedAt: null })
+        .sort({ createdAt: -1 })
+        .toArray()
+
+      // Enrich with related data
+      const kategoriler = await db.collection('dijital_varlik_kategorileri').find({ deletedAt: null }).toArray()
+      const envanterler = await db.collection('envanterler').find({ deletedAt: null }).toArray()
+      const calisanlar = await db.collection('calisanlar').find({ deletedAt: null }).toArray()
+
+      const enrichedData = dijitalVarliklar.map(dv => {
+        const kategori = kategoriler.find(k => k.id === dv.kategoriId)
+        const envanter = envanterler.find(e => e.id === dv.envanterId)
+        const calisan = calisanlar.find(c => c.id === dv.calisanId)
+
+        return {
+          ...dv,
+          kategoriAd: kategori?.ad || '-',
+          envanterBilgisi: envanter ? {
+            marka: envanter.marka,
+            model: envanter.model,
+            seriNumarasi: envanter.seriNumarasi
+          } : null,
+          calisanAd: calisan?.adSoyad || '-'
+        }
+      })
+
+      return handleCORS(NextResponse.json(enrichedData.map(({ _id, ...rest }) => rest)))
+    }
+
+    if (route === '/dijital-varliklar' && method === 'POST') {
+      const body = await request.json()
+
+      if (!body.ad || !body.kategoriId) {
+        return handleCORS(NextResponse.json(
+          { error: "Dijital varlık adı ve kategorisi zorunludur" },
+          { status: 400 }
+        ))
+      }
+
+      const dijitalVarlik = {
+        id: uuidv4(),
+        ad: body.ad,
+        kategoriId: body.kategoriId,
+        hesapEmail: body.hesapEmail || '',
+        hesapKullaniciAdi: body.hesapKullaniciAdi || '',
+        hesapSifre: body.hesapSifre || '',
+        keyBilgisi: body.keyBilgisi || '',
+        envanterId: body.envanterId || null,
+        calisanId: body.calisanId || null,
+        lisansTipi: body.lisansTipi || 'Süresiz', // Süresiz, Yıllık, Aylık
+        baslangicTarihi: body.baslangicTarihi ? new Date(body.baslangicTarihi) : null,
+        bitisTarihi: body.bitisTarihi ? new Date(body.bitisTarihi) : null,
+        durum: body.durum || 'Aktif', // Aktif, Pasif, Süresi Dolmuş
+        notlar: body.notlar || '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null
+      }
+
+      await db.collection('dijital_varliklar').insertOne(dijitalVarlik)
+
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'CREATE_DIGITAL_ASSET',
+        'DigitalAsset',
+        dijitalVarlik.id,
+        { assetName: dijitalVarlik.ad, category: body.kategoriId }
+      )
+
+      const { _id, ...result } = dijitalVarlik
+      return handleCORS(NextResponse.json(result))
+    }
+
+    if (route.startsWith('/dijital-varliklar/') && method === 'PUT') {
+      const id = route.split('/')[2]
+      const body = await request.json()
+
+      const { userId, userName, ...updateFields } = body
+
+      const updateData = {
+        ...updateFields,
+        baslangicTarihi: updateFields.baslangicTarihi ? new Date(updateFields.baslangicTarihi) : null,
+        bitisTarihi: updateFields.bitisTarihi ? new Date(updateFields.bitisTarihi) : null,
+        updatedAt: new Date()
+      }
+
+      const result = await db.collection('dijital_varliklar').updateOne(
+        { id, deletedAt: null },
+        { $set: updateData }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Dijital varlık bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      // Audit log
+      await createAuditLog(
+        userId || 'system',
+        userName || 'System',
+        'UPDATE_DIGITAL_ASSET',
+        'DigitalAsset',
+        id,
+        { assetName: updateFields.ad }
+      )
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
+    if (route.startsWith('/dijital-varliklar/') && method === 'DELETE') {
+      const id = route.split('/')[2]
+      const body = await request.json().catch(() => ({}))
+
+      const existing = await db.collection('dijital_varliklar').findOne({ id, deletedAt: null })
+
+      const result = await db.collection('dijital_varliklar').updateOne(
+        { id, deletedAt: null },
+        { $set: { deletedAt: new Date() } }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Dijital varlık bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'DELETE_DIGITAL_ASSET',
+        'DigitalAsset',
+        id,
+        { assetName: existing?.ad }
+      )
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
     // Route not found
     return handleCORS(NextResponse.json(
       { error: `Route ${route} not found` }, 
