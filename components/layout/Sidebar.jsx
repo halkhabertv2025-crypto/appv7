@@ -47,7 +47,8 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
       children: [
         { id: 'envanterler', label: 'Envanterler' },
         { id: 'envanter-tipleri', label: 'Envanter Tipleri' },
-        { id: 'zimmetler', label: 'Zimmetler' }
+        { id: 'zimmetler', label: 'Zimmetler' },
+        { id: 'dijital-varliklar', label: 'Dijital Varlıklar' }
       ]
     },
     { 
