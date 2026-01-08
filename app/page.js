@@ -73,6 +73,7 @@ export default function App() {
           {currentPage === 'envanterler' && <Envanterler user={user} />}
           {currentPage === 'envanter-tipleri' && <EnvanterTipleri />}
           {currentPage === 'zimmetler' && <Zimmetler user={user} />}
+          {currentPage === 'dijital-varliklar' && <DijitalVarliklar user={user} />}
           {currentPage === 'ayarlar' && <Ayarlar />}
         </main>
       </div>
