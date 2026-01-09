@@ -315,7 +315,7 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
     })
 
     // Get final Y position after table
-    let finalY = (doc as any).lastAutoTable.finalY + 20
+    let finalY = doc.lastAutoTable.finalY + 20
 
     // Date field
     doc.setFontSize(10)
