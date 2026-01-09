@@ -63,7 +63,7 @@ async function handleRoute(request, { params }) {
 
     // Root endpoint
     if (route === '/' && method === 'GET') {
-      return handleCORS(NextResponse.json({ message: "HRplan API v1.0" }))
+      return handleCORS(NextResponse.json({ message: "Halk API v1.0" }))
     }
 
     // ============= AUTHENTICATION =============
@@ -1102,7 +1102,7 @@ async function handleRoute(request, { params }) {
 
       // Seed Çalışanlar
       const calisanlar = [
-        { id: uuidv4(), adSoyad: 'Admin User', email: 'admin@hrplan.com', telefon: '555-9999', departmanId: departmanlar[0].id, durum: 'Aktif', yoneticiYetkisi: true, adminYetkisi: true, sifre: 'admin123', createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
+        { id: uuidv4(), adSoyad: 'Admin User', email: 'admin@halktv.com.tr', telefon: '555-9999', departmanId: departmanlar[0].id, durum: 'Aktif', yoneticiYetkisi: true, adminYetkisi: true, sifre: 'admin123', createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
         { id: uuidv4(), adSoyad: 'Ahmet Yılmaz', email: 'ahmet@example.com', telefon: '555-0001', departmanId: departmanlar[0].id, durum: 'Aktif', yoneticiYetkisi: true, adminYetkisi: false, sifre: '123456', createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
         { id: uuidv4(), adSoyad: 'Ayşe Kaya', email: 'ayse@example.com', telefon: '555-0002', departmanId: departmanlar[1].id, durum: 'Aktif', yoneticiYetkisi: true, adminYetkisi: false, sifre: '123456', createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
         { id: uuidv4(), adSoyad: 'Mehmet Demir', email: 'mehmet@example.com', telefon: '555-0003', departmanId: departmanlar[0].id, durum: 'Aktif', yoneticiYetkisi: false, adminYetkisi: false, sifre: '123456', createdAt: new Date(), updatedAt: new Date(), deletedAt: null },

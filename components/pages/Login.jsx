@@ -73,7 +73,7 @@ const Login = ({ onLogin }) => {
               <Input
                 id="email"
                 type="email"
-                placeholder="ornek@hrplan.com"
+                placeholder="ornek@halktv.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
@@ -108,7 +108,7 @@ const Login = ({ onLogin }) => {
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <p className="text-xs text-gray-600 font-semibold mb-2">Test Hesapları:</p>
             <div className="space-y-1 text-xs text-gray-500">
-              <div><strong>Admin:</strong> admin@hrplan.com / admin123</div>
+              <div><strong>Admin:</strong> admin@halktv.com.tr / admin123</div>
               <div><strong>Yönetici:</strong> ahmet@example.com / 123456</div>
               <div><strong>Yönetici:</strong> ayse@example.com / 123456</div>
             </div>
