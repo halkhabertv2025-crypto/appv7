@@ -1,4 +1,4 @@
-# HRplan - Zimmet ve Envanter Takip Sistemi
+# HALK_v6s - Zimmet ve Envanter Takip Sistemi
 
 Web tabanlı bir zimmet ve envanter takip sistemi. İşyerindeki cihazları çalışanlara zimmetleyip takip edebilirsiniz.
 
