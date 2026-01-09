@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 
 const CalisanDetay = ({ calisan, onClose, user }) => {
   const [activeTab, setActiveTab] = useState('zimmetler')
