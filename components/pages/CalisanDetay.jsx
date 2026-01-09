@@ -219,7 +219,7 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
     toast({ title: 'Başarılı', description: 'Zimmet listesi dışa aktarıldı' })
   }
 
-  // Tüm zimmetleri tek PDF'de listele
+  // Tüm zimmetleri tek PDF'de listele - Örnek formata uygun
   const generateAllZimmetlerPDF = () => {
     const turkishToAscii = (text) => {
       if (!text) return text
@@ -243,38 +243,38 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
     }
 
     const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
 
-    // Logo / Header
-    doc.setFontSize(20)
+    // Logo / Header - Sol üst
+    doc.setFontSize(24)
     doc.setFont('helvetica', 'bold')
-    doc.text('Halk TV', 20, 20)
+    doc.setTextColor(0, 128, 128) // Teal color
+    doc.text('Halk', 20, 20)
+    doc.setTextColor(0, 0, 0)
 
-    // Title
-    doc.setFontSize(16)
-    doc.text('ZIMMET LISTESI', 105, 20, { align: 'center' })
-
-    doc.setLineWidth(0.5)
-    doc.line(20, 25, 190, 25)
-
-    // Employee Info
-    doc.setFontSize(12)
+    // Title - Center
+    doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
-    doc.text('CALISAN BILGILERI', 20, 35)
+    doc.text('KISISEL KORUYUCU DONANIM ZIMMET TUTANAGI', pageWidth / 2, 35, { align: 'center' })
 
+    // Legal text paragraph 1
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(10)
-    doc.text(`Ad Soyad: ${turkishToAscii(calisan.adSoyad)}`, 20, 43)
-    doc.text(`Departman: ${turkishToAscii(calisan.departmanAd)}`, 20, 50)
-    doc.text(`Email: ${calisan.email || '-'}`, 120, 43)
-    doc.text(`Telefon: ${calisan.telefon || '-'}`, 120, 50)
+    const legalText1 = `Yukarida belirtilen kisisel koruyucu donanimlari eksiksiz olarak teslim aldim. Kullanim kilavuzlarini okudum ve anlattiklari hususlari anladim. Verilen Kisisel Koruyucu Donanimlari sadece kendi sagligim ve guvenligim icin isyerinde kullanacagimi, amaci disinda ve is disinda kullanmayacagimi, eksik ya da hasarli malzeme ile calismayacagimi, hasar, kayip veya calinamasi halinde derhal amirlerime bildirip degistirerek, ayrilmam halinde iade edecegimi taahhut ederim.`
+    
+    const splitText1 = doc.splitTextToSize(legalText1, pageWidth - 40)
+    doc.text(splitText1, 20, 45)
 
-    doc.setLineWidth(0.3)
-    doc.line(20, 55, 190, 55)
+    // Legal text paragraph 2
+    const legalText2 = `Is sagligi ve guvenligi konusunda, 6331 sayili Is Sagligi ve Guvenligi Kanunu ve ilgili yonetmelikleri geregince gerekli egitimler tarafima verilmis olup, is sagligi ve guvenligi kurallarina uymam gerektigi, bu kurallara uymamam halinde olusacak kazalardan bizzat kendimin sorumlu olacagi ve isverenin belirlenen cezai yaptirimlari uygulayacagi hususlarinda bilgilendirildim.`
+    
+    const splitText2 = doc.splitTextToSize(legalText2, pageWidth - 40)
+    doc.text(splitText2, 20, 70)
 
-    // Table Header
+    // Table Title
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.text('ZIMMETLI ENVANTERLER', 20, 63)
+    doc.text('ALINAN MALZEMENIN', 20, 100)
 
     // Create table data
     const tableData = aktifZimmetler.map((zimmet, index) => [
@@ -282,66 +282,85 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
       turkishToAscii(zimmet.envanterBilgisi?.tip || '-'),
       turkishToAscii(zimmet.envanterBilgisi?.marka || '-'),
       turkishToAscii(zimmet.envanterBilgisi?.model || '-'),
-      turkishToAscii(zimmet.envanterBilgisi?.seriNumarasi || '-'),
-      new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')
+      '1', // Adedi
+      turkishToAscii(zimmet.envanterBilgisi?.seriNumarasi || '-')
     ])
 
     // Use autoTable for the table
     doc.autoTable({
-      startY: 68,
-      head: [['#', 'Tip', 'Marka', 'Model', 'Seri No', 'Zimmet Tarihi']],
+      startY: 105,
+      head: [['NO', 'ENVANTER TIPI', 'MARKA', 'MODEL', 'ADEDI', 'SERI NUMARASI']],
       body: tableData,
       theme: 'grid',
       headStyles: {
-        fillColor: [0, 128, 128],
-        textColor: 255,
+        fillColor: [220, 220, 220],
+        textColor: [0, 0, 0],
         fontSize: 9,
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        halign: 'center'
       },
       bodyStyles: {
-        fontSize: 9
+        fontSize: 9,
+        halign: 'center'
       },
       columnStyles: {
-        0: { cellWidth: 10 },
-        1: { cellWidth: 30 },
+        0: { cellWidth: 15 },
+        1: { cellWidth: 35 },
         2: { cellWidth: 30 },
-        3: { cellWidth: 40 },
-        4: { cellWidth: 40 },
-        5: { cellWidth: 30 }
+        3: { cellWidth: 35 },
+        4: { cellWidth: 20 },
+        5: { cellWidth: 40 }
       },
       margin: { left: 20, right: 20 }
     })
 
     // Get final Y position after table
-    const finalY = doc.lastAutoTable.finalY + 15
+    let finalY = doc.lastAutoTable.finalY + 20
 
-    // Summary
+    // Date field
     doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.text(`Toplam Zimmetli Envanter: ${aktifZimmetler.length} adet`, 20, finalY)
+    doc.setFont('helvetica', 'normal')
+    const today = new Date()
+    doc.text(`TARIH: ${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()}`, 20, finalY)
 
     // Signature section
-    const signatureY = finalY + 30
-    doc.setLineWidth(0.3)
-    doc.line(20, signatureY, 80, signatureY)
-    doc.line(110, signatureY, 170, signatureY)
+    finalY += 15
 
-    doc.setFontSize(9)
+    // Left side - Teslim Eden
+    doc.setFont('helvetica', 'bold')
+    doc.text('TESLIM EDEN', 50, finalY, { align: 'center' })
+    
     doc.setFont('helvetica', 'normal')
-    doc.text('Teslim Eden', 40, signatureY + 7, { align: 'center' })
-    doc.text(`Teslim Alan: ${turkishToAscii(calisan.adSoyad)}`, 140, signatureY + 7, { align: 'center' })
+    doc.text('ADI SOYADI:', 20, finalY + 12)
+    doc.line(50, finalY + 12, 90, finalY + 12)
+    
+    doc.text('CALISTIGI BOLUM:', 20, finalY + 22)
+    doc.line(60, finalY + 22, 90, finalY + 22)
+    
+    doc.text('IMZASI:', 20, finalY + 32)
+    doc.line(45, finalY + 32, 90, finalY + 32)
 
-    // Footer
-    doc.setFontSize(8)
-    doc.setTextColor(128)
-    doc.text('Halk TV Zimmet Takip Sistemi', 105, 285, { align: 'center' })
-    doc.text(`Olusturma Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, 105, 290, { align: 'center' })
+    // Right side - Teslim Alan
+    doc.setFont('helvetica', 'bold')
+    doc.text('TESLIM ALAN', 150, finalY, { align: 'center' })
+    
+    doc.setFont('helvetica', 'normal')
+    doc.text('ADI SOYADI:', 110, finalY + 12)
+    doc.text(turkishToAscii(calisan.adSoyad), 145, finalY + 12)
+    doc.line(140, finalY + 12, 190, finalY + 12)
+    
+    doc.text('CALISTIGI BOLUM:', 110, finalY + 22)
+    doc.text(turkishToAscii(calisan.departmanAd || ''), 155, finalY + 22)
+    doc.line(150, finalY + 22, 190, finalY + 22)
+    
+    doc.text('IMZASI:', 110, finalY + 32)
+    doc.line(135, finalY + 32, 190, finalY + 32)
 
     // Save
     const cleanName = turkishToAscii(calisan.adSoyad).replace(/\s+/g, '_')
-    doc.save(`zimmet_listesi_${cleanName}_${new Date().toISOString().split('T')[0]}.pdf`)
+    doc.save(`zimmet_tutanagi_${cleanName}_${new Date().toISOString().split('T')[0]}.pdf`)
 
-    toast({ title: 'Başarılı', description: 'Tüm zimmetler PDF olarak indirildi' })
+    toast({ title: 'Başarılı', description: 'Zimmet tutanağı PDF olarak indirildi' })
   }
 
   if (!calisan) return null
