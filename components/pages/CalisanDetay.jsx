@@ -260,16 +260,16 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
     // Legal text paragraph 1
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
-    const legalText1 = `Yukarida belirtilen kisisel koruyucu donanimlari eksiksiz olarak teslim aldim. Kullanim kilavuzlarini okudum ve anlattiklari hususlari anladim. Verilen Kisisel Koruyucu Donanimlari sadece kendi sagligim ve guvenligim icin isyerinde kullanacagimi, amaci disinda ve is disinda kullanmayacagimi, eksik ya da hasarli malzeme ile calismayacagimi, hasar, kayip veya calinamasi halinde derhal amirlerime bildirip degistirerek, ayrilmam halinde iade edecegimi taahhut ederim.`
+    const legalText1 = `Asagida dokumu yapilan Kisisel Koruyucu malzemeleri teslim aldim ve nasil kullanacagi konusunda egitim aldim. Tarafima verilen bu malzemeleri bu isyerinde kullanmayi ve kullanim suresi doluncaya kadar muhafaza etmeyi, kayboldugunda veya kotu kullanim nedeniyle hasarlandiginda fatura bedelinin ucretimden kesilecegini ve derhal yenisini almak uzere yetkiliye basvuracagimi taahhut ederim.`
     
     const splitText1 = doc.splitTextToSize(legalText1, pageWidth - 40)
     doc.text(splitText1, 20, 45)
 
     // Legal text paragraph 2
-    const legalText2 = `Is sagligi ve guvenligi konusunda, 6331 sayili Is Sagligi ve Guvenligi Kanunu ve ilgili yonetmelikleri geregince gerekli egitimler tarafima verilmis olup, is sagligi ve guvenligi kurallarina uymam gerektigi, bu kurallara uymamam halinde olusacak kazalardan bizzat kendimin sorumlu olacagi ve isverenin belirlenen cezai yaptirimlari uygulayacagi hususlarinda bilgilendirildim.`
+    const legalText2 = `Ayrica bu malzemeleri kullanmadigim takdirde birinci uyarida bir gunluk yevmiyemin kesilecegini, ikinci uyarida ise 6331 Sayili Is Kanunun ilgili maddesi uyarinca gorevime son verilecegini kabul ederim.`
     
     const splitText2 = doc.splitTextToSize(legalText2, pageWidth - 40)
-    doc.text(splitText2, 20, 70)
+    doc.text(splitText2, 20, 68)
 
     // Table Title
     doc.setFontSize(11)
