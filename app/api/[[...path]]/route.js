@@ -1668,9 +1668,80 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json({ success: true }))
     }
 
+    // Backup Stats Endpoint
+    if (route === '/backup/stats' && method === 'GET') {
+      const envanterler = await db.collection('envanterler').countDocuments({ deletedAt: null })
+      const calisanlar = await db.collection('calisanlar').countDocuments({ deletedAt: null })
+      const zimmetler = await db.collection('zimmetler').countDocuments({ deletedAt: null })
+      const departmanlar = await db.collection('departmanlar').countDocuments({ deletedAt: null })
+      const envanterTipleri = await db.collection('envanter_tipleri').countDocuments({ deletedAt: null })
+      const auditLogs = await db.collection('audit_logs').countDocuments({})
+      const digitalAssets = await db.collection('digital_assets').countDocuments({ deletedAt: null })
+      const digitalAssetCategories = await db.collection('digital_asset_categories').countDocuments({ deletedAt: null })
+
+      return handleCORS(NextResponse.json({
+        envanterler,
+        calisanlar,
+        zimmetler,
+        departmanlar,
+        envanterTipleri,
+        auditLogs,
+        digitalAssets,
+        digitalAssetCategories
+      }))
+    }
+
+    // Backup Export Endpoint
+    if (route === '/backup/export' && method === 'GET') {
+      const envanterler = await db.collection('envanterler').find({ deletedAt: null }).toArray()
+      const calisanlar = await db.collection('calisanlar').find({ deletedAt: null }).toArray()
+      const zimmetler = await db.collection('zimmetler').find({ deletedAt: null }).toArray()
+      const departmanlar = await db.collection('departmanlar').find({ deletedAt: null }).toArray()
+      const envanterTipleri = await db.collection('envanter_tipleri').find({ deletedAt: null }).toArray()
+      const auditLogs = await db.collection('audit_logs').find({}).toArray()
+      const digitalAssets = await db.collection('digital_assets').find({ deletedAt: null }).toArray()
+      const digitalAssetCategories = await db.collection('digital_asset_categories').find({ deletedAt: null }).toArray()
+
+      await createAuditLog(
+        'system',
+        'System',
+        'EXPORT_SYSTEM_BACKUP',
+        'System',
+        'backup',
+        {
+          timestamp: new Date(),
+          recordCounts: {
+            envanterler: envanterler.length,
+            calisanlar: calisanlar.length,
+            zimmetler: zimmetler.length,
+            departmanlar: departmanlar.length,
+            envanterTipleri: envanterTipleri.length,
+            auditLogs: auditLogs.length,
+            digitalAssets: digitalAssets.length,
+            digitalAssetCategories: digitalAssetCategories.length
+          }
+        }
+      )
+
+      return handleCORS(NextResponse.json({
+        exportDate: new Date().toISOString(),
+        version: '1.0',
+        collections: {
+          envanterler: envanterler.map(({ _id, ...rest }) => rest),
+          calisanlar: calisanlar.map(({ _id, ...rest }) => rest),
+          zimmetler: zimmetler.map(({ _id, ...rest }) => rest),
+          departmanlar: departmanlar.map(({ _id, ...rest }) => rest),
+          envanterTipleri: envanterTipleri.map(({ _id, ...rest }) => rest),
+          auditLogs: auditLogs.map(({ _id, ...rest }) => rest),
+          digitalAssets: digitalAssets.map(({ _id, ...rest }) => rest),
+          digitalAssetCategories: digitalAssetCategories.map(({ _id, ...rest }) => rest)
+        }
+      }))
+    }
+
     // Route not found
     return handleCORS(NextResponse.json(
-      { error: `Route ${route} not found` }, 
+      { error: `Route ${route} not found` },
       { status: 404 }
     ))
 

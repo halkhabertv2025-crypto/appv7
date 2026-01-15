@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { FileText, Search, Filter, RotateCcw, Package, Users } from 'lucide-react'
+import { FileText, Search, Filter, RotateCcw, Package, Users, Download, Database, AlertCircle, Key } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 export default function Ayarlar() {
@@ -18,6 +18,8 @@ export default function Ayarlar() {
   const [loading, setLoading] = useState(false)
   const [selectedLog, setSelectedLog] = useState(null)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
+  const [exportLoading, setExportLoading] = useState(false)
+  const [backupStats, setBackupStats] = useState(null)
   const [filters, setFilters] = useState({
     actionType: '',
     entityType: '',
@@ -157,6 +159,50 @@ export default function Ayarlar() {
       endDate: ''
     })
     setPagination(prev => ({ ...prev, page: 1 }))
+  }
+
+  const fetchBackupStats = async () => {
+    try {
+      const response = await fetch('/api/backup/stats')
+      const data = await response.json()
+      setBackupStats(data)
+    } catch (error) {
+      console.error('Backup stats yüklenemedi:', error)
+    }
+  }
+
+  const handleFullBackup = async () => {
+    setExportLoading(true)
+    try {
+      const response = await fetch('/api/backup/export')
+
+      if (!response.ok) {
+        toast({ title: 'Hata', description: 'Yedekleme başarısız', variant: 'destructive' })
+        return
+      }
+
+      const data = await response.json()
+
+      // Create JSON file and download
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `sistem_yedeği_${new Date().toISOString().split('T')[0]}_${Date.now()}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      toast({
+        title: 'Başarılı',
+        description: 'Sistem yedeği başarıyla indirildi'
+      })
+    } catch (error) {
+      toast({ title: 'Hata', description: 'Yedekleme sırasında bir hata oluştu', variant: 'destructive' })
+    } finally {
+      setExportLoading(false)
+    }
   }
 
   return (
@@ -412,13 +458,136 @@ export default function Ayarlar() {
         </TabsContent>
 
         <TabsContent value="system">
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center py-12 text-gray-500">
-                Sistem ayarları yapım aşamasındadır.
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Database className="mr-2" size={20} />
+                  Sistem Yedekleme
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-start gap-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <AlertCircle className="text-blue-600 mt-0.5" size={20} />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium mb-1">Sistem Yedeği Hakkında</p>
+                    <p>Tüm envanter, çalışan, zimmet, departman ve işlem geçmişi verileriniz JSON formatında indirilecektir. Bu yedek dosyası ile sistemin tam bir kopyasını alabilirsiniz.</p>
+                  </div>
+                </div>
+
+                {backupStats ? (
+                  <div>
+                    <h4 className="font-medium text-sm text-gray-700 mb-3">Yedeklenecek Veriler</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <Card className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500">Envanterler</p>
+                            <p className="text-2xl font-bold text-gray-800">{backupStats.envanterler || 0}</p>
+                          </div>
+                          <Package className="text-teal-500" size={24} />
+                        </div>
+                      </Card>
+                      <Card className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500">Çalışanlar</p>
+                            <p className="text-2xl font-bold text-gray-800">{backupStats.calisanlar || 0}</p>
+                          </div>
+                          <Users className="text-blue-500" size={24} />
+                        </div>
+                      </Card>
+                      <Card className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500">Zimmetler</p>
+                            <p className="text-2xl font-bold text-gray-800">{backupStats.zimmetler || 0}</p>
+                          </div>
+                          <FileText className="text-green-500" size={24} />
+                        </div>
+                      </Card>
+                      <Card className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500">Departmanlar</p>
+                            <p className="text-2xl font-bold text-gray-800">{backupStats.departmanlar || 0}</p>
+                          </div>
+                          <Users className="text-purple-500" size={24} />
+                        </div>
+                      </Card>
+                      <Card className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500">Envanter Tipleri</p>
+                            <p className="text-2xl font-bold text-gray-800">{backupStats.envanterTipleri || 0}</p>
+                          </div>
+                          <Package className="text-orange-500" size={24} />
+                        </div>
+                      </Card>
+                      <Card className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500">İşlem Kayıtları</p>
+                            <p className="text-2xl font-bold text-gray-800">{backupStats.auditLogs || 0}</p>
+                          </div>
+                          <FileText className="text-red-500" size={24} />
+                        </div>
+                      </Card>
+                      <Card className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500">Dijital Varlıklar</p>
+                            <p className="text-2xl font-bold text-gray-800">{backupStats.digitalAssets || 0}</p>
+                          </div>
+                          <Key className="text-indigo-500" size={24} />
+                        </div>
+                      </Card>
+                      <Card className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500">Dijital Varlık Kategorileri</p>
+                            <p className="text-2xl font-bold text-gray-800">{backupStats.digitalAssetCategories || 0}</p>
+                          </div>
+                          <Database className="text-pink-500" size={24} />
+                        </div>
+                      </Card>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-center py-8">
+                    <Button variant="outline" onClick={fetchBackupStats}>
+                      <Database className="mr-2" size={16} />
+                      İstatistikleri Yükle
+                    </Button>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t">
+                  <Button
+                    onClick={handleFullBackup}
+                    disabled={exportLoading}
+                    className="w-full bg-teal-500 hover:bg-teal-600"
+                    size="lg"
+                  >
+                    {exportLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Yedek Hazırlanıyor...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-2" size={20} />
+                        Tam Sistem Yedeği Al
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-gray-500 text-center mt-2">
+                    Yedek dosyası: sistem_yedegi_[tarih]_[zaman].json
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
