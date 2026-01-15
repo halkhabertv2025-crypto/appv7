@@ -189,8 +189,8 @@ const Departmanlar = ({ user }) => {
                     const isExpanded = expandedDepts[departman.id]
                     
                     return (
-                      <>
-                        <tr key={departman.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => toggleDept(departman.id)}>
+                      <React.Fragment key={departman.id}>
+                        <tr className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => toggleDept(departman.id)}>
                           <td className="py-3 px-4">
                             {deptCalisanlar.length > 0 && (
                               isExpanded ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronRight size={16} className="text-gray-500" />
@@ -224,7 +224,7 @@ const Departmanlar = ({ user }) => {
                           </td>
                         </tr>
                         {isExpanded && deptCalisanlar.length > 0 && (
-                          <tr key={`${departman.id}-employees`}>
+                          <tr>
                             <td colSpan={5} className="bg-gray-50 px-4 py-3">
                               <div className="pl-8">
                                 <div className="text-xs font-medium text-gray-500 mb-2">Departman Çalışanları</div>
@@ -245,7 +245,7 @@ const Departmanlar = ({ user }) => {
                             </td>
                           </tr>
                         )}
-                      </>
+                      </React.Fragment>
                     )
                   })}
                 </tbody>
