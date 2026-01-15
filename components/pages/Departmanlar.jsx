@@ -176,36 +176,78 @@ const Departmanlar = ({ user }) => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 w-8"></th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Departman Adı</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Çalışan Sayısı</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Açıklama</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">İşlemler</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredDepartmanlar.map((departman) => (
-                    <tr key={departman.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm font-medium">{departman.ad}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{departman.aciklama || '-'}</td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => openEditDialog(departman)}
-                          >
-                            <Pencil size={16} />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleDelete(departman.id)}
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredDepartmanlar.map((departman) => {
+                    const deptCalisanlar = getCalisanlarByDept(departman.id)
+                    const isExpanded = expandedDepts[departman.id]
+                    
+                    return (
+                      <>
+                        <tr key={departman.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => toggleDept(departman.id)}>
+                          <td className="py-3 px-4">
+                            {deptCalisanlar.length > 0 && (
+                              isExpanded ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronRight size={16} className="text-gray-500" />
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-sm font-medium">{departman.ad}</td>
+                          <td className="py-3 px-4 text-sm">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <Users size={12} />
+                              {deptCalisanlar.length} Çalışan
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{departman.aciklama || '-'}</td>
+                          <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-end space-x-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => openEditDialog(departman)}
+                              >
+                                <Pencil size={16} />
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleDelete(departman.id)}
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && deptCalisanlar.length > 0 && (
+                          <tr key={`${departman.id}-employees`}>
+                            <td colSpan={5} className="bg-gray-50 px-4 py-3">
+                              <div className="pl-8">
+                                <div className="text-xs font-medium text-gray-500 mb-2">Departman Çalışanları</div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                  {deptCalisanlar.map(calisan => (
+                                    <div key={calisan.id} className="flex items-center gap-2 p-2 bg-white rounded border">
+                                      <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 text-xs font-medium">
+                                        {calisan.adSoyad?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-medium text-gray-900 truncate">{calisan.adSoyad}</div>
+                                        <div className="text-xs text-gray-500 truncate">{calisan.email}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    )
+                  })}
                 </tbody>
               </table>
               {filteredDepartmanlar.length === 0 && (
