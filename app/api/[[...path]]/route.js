@@ -338,13 +338,21 @@ async function handleRoute(request, { params }) {
         .sort({ createdAt: -1 })
         .toArray()
       
-      // Add department names
+      // Get all active zimmetler
+      const aktifZimmetler = await db.collection('zimmetler')
+        .find({ durum: 'Aktif', deletedAt: null })
+        .toArray()
+      
+      // Add department names and zimmet count
       const enrichedCalisanlar = await Promise.all(
         calisanlar.map(async (calisan) => {
           const departman = await db.collection('departmanlar').findOne({ id: calisan.departmanId })
+          const calisanZimmetleri = aktifZimmetler.filter(z => z.calisanId === calisan.id)
           return {
             ...calisan,
-            departmanAd: departman?.ad || 'Bilinmiyor'
+            departmanAd: departman?.ad || 'Bilinmiyor',
+            aktifZimmetSayisi: calisanZimmetleri.length,
+            zimmetliMi: calisanZimmetleri.length > 0
           }
         })
       )
