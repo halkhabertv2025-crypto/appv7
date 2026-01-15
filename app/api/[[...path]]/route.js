@@ -447,6 +447,22 @@ async function handleRoute(request, { params }) {
         }
       }
 
+      // Check if trying to set employee to Pasif while they have active zimmet
+      if (body.durum === 'Pasif' && existingCalisan?.durum !== 'Pasif') {
+        const activeZimmet = await db.collection('zimmetler').findOne({
+          calisanId: id,
+          durum: 'Aktif',
+          deletedAt: null
+        })
+
+        if (activeZimmet) {
+          return handleCORS(NextResponse.json(
+            { error: "Üzerinde aktif zimmet olan çalışan pasife alınamaz. Önce zimmetleri iade alın." },
+            { status: 409 }
+          ))
+        }
+      }
+
       const { userId, userName, ...updateFields } = body
       const updateData = {
         ...updateFields,
