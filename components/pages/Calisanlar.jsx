@@ -249,7 +249,18 @@ const Calisanlar = ({ user }) => {
                 <tbody>
                   {filteredCalisanlar.map((calisan) => (
                     <tr key={calisan.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm font-medium">{calisan.adSoyad}</td>
+                      <td className="py-3 px-4 text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <span className={calisan.zimmetliMi ? 'text-red-600 font-semibold' : ''}>
+                            {calisan.adSoyad}
+                          </span>
+                          {calisan.zimmetliMi && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                              {calisan.aktifZimmetSayisi} Zimmet
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3 px-4 text-sm text-gray-600">{calisan.email || '-'}</td>
                       <td className="py-3 px-4 text-sm text-gray-600">{calisan.telefon || '-'}</td>
                       <td className="py-3 px-4 text-sm text-gray-600">{calisan.departmanAd}</td>
