@@ -807,6 +807,88 @@ const Envanterler = ({ user }) => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Aksesuar Dialog */}
+      <Dialog open={showAksesuarDialog} onOpenChange={setShowAksesuarDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Package className="mr-2" size={20} />
+              {editingAksesuar ? 'Aksesuar Düzenle' : 'Yeni Aksesuar Ekle'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAksesuarSubmit}>
+            <div className="space-y-4">
+              {selectedEnvanterForAksesuar && (
+                <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                  <span className="font-medium">Ana Envanter:</span> {selectedEnvanterForAksesuar.marka} {selectedEnvanterForAksesuar.model}
+                </div>
+              )}
+              <div>
+                <Label htmlFor="aksesuarAd">Aksesuar Adı *</Label>
+                <Input
+                  id="aksesuarAd"
+                  value={aksesuarFormData.ad}
+                  onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, ad: e.target.value })}
+                  placeholder="Örn: Adaptör, Mouse, Çanta"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="aksesuarMarka">Marka</Label>
+                  <Input
+                    id="aksesuarMarka"
+                    value={aksesuarFormData.marka}
+                    onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, marka: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="aksesuarModel">Model</Label>
+                  <Input
+                    id="aksesuarModel"
+                    value={aksesuarFormData.model}
+                    onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, model: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="aksesuarSeriNo">Seri Numarası</Label>
+                <Input
+                  id="aksesuarSeriNo"
+                  value={aksesuarFormData.seriNumarasi}
+                  onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, seriNumarasi: e.target.value })}
+                  placeholder="Aksesuar seri numarası"
+                />
+              </div>
+              <div>
+                <Label htmlFor="aksesuarDurum">Durum</Label>
+                <Select
+                  value={aksesuarFormData.durum}
+                  onValueChange={(value) => setAksesuarFormData({ ...aksesuarFormData, durum: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Depoda">Depoda</SelectItem>
+                    <SelectItem value="Aktif">Aktif</SelectItem>
+                    <SelectItem value="Arızalı">Arızalı</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={() => setShowAksesuarDialog(false)}>
+                İptal
+              </Button>
+              <Button type="submit" className="bg-teal-500 hover:bg-teal-600">
+                {editingAksesuar ? 'Güncelle' : 'Ekle'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
