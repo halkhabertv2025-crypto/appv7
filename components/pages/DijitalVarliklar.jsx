@@ -167,8 +167,12 @@ const DijitalVarliklar = ({ user }) => {
     e.preventDefault()
 
     try {
-      const response = await fetch('/api/dijital-varlik-kategorileri', {
-        method: 'POST',
+      const url = editingKategori 
+        ? `/api/dijital-varlik-kategorileri/${editingKategori.id}`
+        : '/api/dijital-varlik-kategorileri'
+      
+      const response = await fetch(url, {
+        method: editingKategori ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...kategoriFormData,
@@ -184,13 +188,20 @@ const DijitalVarliklar = ({ user }) => {
         return
       }
 
-      toast({ title: 'Başarılı', description: 'Kategori oluşturuldu' })
+      toast({ title: 'Başarılı', description: editingKategori ? 'Kategori güncellendi' : 'Kategori oluşturuldu' })
       setShowKategoriDialog(false)
       setKategoriFormData({ ad: '', aciklama: '' })
+      setEditingKategori(null)
       fetchKategoriler()
     } catch (error) {
       toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
     }
+  }
+
+  const openEditKategori = (kategori) => {
+    setEditingKategori(kategori)
+    setKategoriFormData({ ad: kategori.ad, aciklama: kategori.aciklama || '' })
+    setShowKategoriDialog(true)
   }
 
   const handleDelete = async (id) => {
