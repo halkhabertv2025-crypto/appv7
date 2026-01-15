@@ -767,10 +767,16 @@ const DijitalVarliklar = ({ user }) => {
       </Dialog>
 
       {/* Kategori Dialog */}
-      <Dialog open={showKategoriDialog} onOpenChange={setShowKategoriDialog}>
+      <Dialog open={showKategoriDialog} onOpenChange={(open) => {
+        setShowKategoriDialog(open)
+        if (!open) {
+          setEditingKategori(null)
+          setKategoriFormData({ ad: '', aciklama: '' })
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Yeni Kategori Oluştur</DialogTitle>
+            <DialogTitle>{editingKategori ? 'Kategori Düzenle' : 'Yeni Kategori Oluştur'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleKategoriSubmit}>
             <div className="space-y-4">
@@ -793,13 +799,35 @@ const DijitalVarliklar = ({ user }) => {
                   rows={2}
                 />
               </div>
+              {/* Mevcut kategorileri düzenleme listesi */}
+              {!editingKategori && kategoriler.length > 0 && (
+                <div className="border-t pt-4">
+                  <Label className="text-sm text-gray-500">Mevcut Kategoriler (düzenlemek için tıklayın)</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {kategoriler.map(kat => (
+                      <button
+                        key={kat.id}
+                        type="button"
+                        onClick={() => openEditKategori(kat)}
+                        className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200"
+                      >
+                        {kat.ad}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={() => setShowKategoriDialog(false)}>
+              <Button type="button" variant="outline" onClick={() => {
+                setShowKategoriDialog(false)
+                setEditingKategori(null)
+                setKategoriFormData({ ad: '', aciklama: '' })
+              }}>
                 İptal
               </Button>
               <Button type="submit" className="bg-teal-500 hover:bg-teal-600">
-                Oluştur
+                {editingKategori ? 'Güncelle' : 'Oluştur'}
               </Button>
             </DialogFooter>
           </form>
