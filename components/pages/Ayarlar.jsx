@@ -337,6 +337,80 @@ export default function Ayarlar() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="restore" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Silinen Envanterler */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <Package className="mr-2" size={20} />
+                  Silinen Envanterler ({deletedEnvanterler.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {deletedEnvanterler.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">Silinen envanter bulunmuyor</div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {deletedEnvanterler.map(env => (
+                      <div key={env.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="font-medium text-sm">{env.marka} {env.model}</div>
+                          <div className="text-xs text-gray-500">
+                            {env.envanterTipiAd} - {env.seriNumarasi}
+                          </div>
+                          <div className="text-xs text-red-500">
+                            Silinme: {new Date(env.deletedAt).toLocaleDateString('tr-TR')}
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => restoreEnvanter(env.id)}>
+                          <RotateCcw size={14} className="mr-1" />
+                          Geri Yükle
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Silinen Çalışanlar */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <Users className="mr-2" size={20} />
+                  Silinen Çalışanlar ({deletedCalisanlar.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {deletedCalisanlar.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">Silinen çalışan bulunmuyor</div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {deletedCalisanlar.map(cal => (
+                      <div key={cal.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="font-medium text-sm">{cal.adSoyad}</div>
+                          <div className="text-xs text-gray-500">
+                            {cal.departmanAd} - {cal.email}
+                          </div>
+                          <div className="text-xs text-red-500">
+                            Silinme: {new Date(cal.deletedAt).toLocaleDateString('tr-TR')}
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => restoreCalisan(cal.id)}>
+                          <RotateCcw size={14} className="mr-1" />
+                          Geri Yükle
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         <TabsContent value="system">
           <Card>
             <CardContent className="p-6">
