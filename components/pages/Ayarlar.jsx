@@ -115,6 +115,7 @@ export default function Ayarlar() {
     'UPDATE_INVENTORY': 'Envanter Güncellendi',
     'UPDATE_INVENTORY_STATUS': 'Envanter Durumu Değişti',
     'DELETE_INVENTORY': 'Envanter Silindi',
+    'RESTORE_INVENTORY': 'Envanter Geri Yüklendi',
     'CREATE_DEPARTMENT': 'Departman Oluşturuldu',
     'UPDATE_DEPARTMENT': 'Departman Güncellendi',
     'DELETE_DEPARTMENT': 'Departman Silindi',
@@ -124,6 +125,7 @@ export default function Ayarlar() {
     'UPDATE_DIGITAL_ASSET': 'Dijital Varlık Güncellendi',
     'DELETE_DIGITAL_ASSET': 'Dijital Varlık Silindi',
     'CREATE_DIGITAL_ASSET_CATEGORY': 'Dijital Varlık Kategorisi Oluşturuldu',
+    'RESTORE_EMPLOYEE': 'Çalışan Geri Yüklendi',
     'ASSIGN_ROLE': 'Rol Atandı',
     'IMPORT_INVENTORY': 'Envanter İçe Aktarıldı',
     'EXPORT_INVENTORY': 'Envanter Dışa Aktarıldı'
