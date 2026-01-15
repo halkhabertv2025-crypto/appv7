@@ -1390,6 +1390,31 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(result))
     }
 
+    if (route.startsWith('/dijital-varlik-kategorileri/') && method === 'PUT') {
+      const id = route.split('/')[2]
+      const body = await request.json()
+
+      const { userId, userName, ...updateFields } = body
+      const updateData = {
+        ...updateFields,
+        updatedAt: new Date()
+      }
+
+      const result = await db.collection('dijital_varlik_kategorileri').updateOne(
+        { id, deletedAt: null },
+        { $set: updateData }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Kategori bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
     if (route.startsWith('/dijital-varlik-kategorileri/') && method === 'DELETE') {
       const id = route.split('/')[2]
       const body = await request.json().catch(() => ({}))
