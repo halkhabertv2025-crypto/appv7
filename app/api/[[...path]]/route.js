@@ -843,6 +843,20 @@ async function handleRoute(request, { params }) {
       // Get envanter info before deletion
       const existingEnvanter = await db.collection('envanterler').findOne({ id, deletedAt: null })
 
+      // Check if envanter has active zimmet - cannot delete if assigned
+      const activeZimmet = await db.collection('zimmetler').findOne({
+        envanterId: id,
+        durum: 'Aktif',
+        deletedAt: null
+      })
+
+      if (activeZimmet) {
+        return handleCORS(NextResponse.json(
+          { error: "Zimmetli envanter silinemez. Önce iade alın." },
+          { status: 409 }
+        ))
+      }
+
       const result = await db.collection('envanterler').updateOne(
         { id, deletedAt: null },
         { $set: { deletedAt: new Date() } }
