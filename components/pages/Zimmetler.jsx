@@ -428,6 +428,12 @@ const Zimmetler = ({ user }) => {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="envanterId">Envanter *</Label>
+                <Input
+                  placeholder="Envanter ara (marka, model, seri no)..."
+                  value={envanterSearchTerm}
+                  onChange={(e) => setEnvanterSearchTerm(e.target.value)}
+                  className="mb-2"
+                />
                 <Select 
                   value={formData.envanterId} 
                   onValueChange={(value) => setFormData({ ...formData, envanterId: value })}
@@ -437,16 +443,33 @@ const Zimmetler = ({ user }) => {
                     <SelectValue placeholder="Envanter seçin (Sadece depodaki envanterler)" />
                   </SelectTrigger>
                   <SelectContent>
-                    {envanterler.map(env => (
-                      <SelectItem key={env.id} value={env.id}>
-                        {env.envanterTipiAd} - {env.marka} {env.model} ({env.seriNumarasi})
-                      </SelectItem>
-                    ))}
+                    {envanterler
+                      .filter(env => {
+                        if (!envanterSearchTerm) return true
+                        const search = envanterSearchTerm.toLowerCase()
+                        return (
+                          env.marka?.toLowerCase().includes(search) ||
+                          env.model?.toLowerCase().includes(search) ||
+                          env.seriNumarasi?.toLowerCase().includes(search) ||
+                          env.envanterTipiAd?.toLowerCase().includes(search)
+                        )
+                      })
+                      .map(env => (
+                        <SelectItem key={env.id} value={env.id}>
+                          {env.envanterTipiAd} - {env.marka} {env.model} ({env.seriNumarasi})
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label htmlFor="calisanId">Çalışan *</Label>
+                <Input
+                  placeholder="Çalışan ara (ad soyad)..."
+                  value={calisanSearchTerm}
+                  onChange={(e) => setCalisanSearchTerm(e.target.value)}
+                  className="mb-2"
+                />
                 <Select 
                   value={formData.calisanId} 
                   onValueChange={(value) => setFormData({ ...formData, calisanId: value })}
@@ -456,11 +479,17 @@ const Zimmetler = ({ user }) => {
                     <SelectValue placeholder="Çalışan seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    {calisanlar.map(cal => (
-                      <SelectItem key={cal.id} value={cal.id}>
-                        {cal.adSoyad} ({cal.departmanAd})
-                      </SelectItem>
-                    ))}
+                    {calisanlar
+                      .filter(cal => {
+                        if (!calisanSearchTerm) return true
+                        const search = calisanSearchTerm.toLowerCase()
+                        return cal.adSoyad?.toLowerCase().includes(search)
+                      })
+                      .map(cal => (
+                        <SelectItem key={cal.id} value={cal.id}>
+                          {cal.adSoyad} ({cal.departmanAd})
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
