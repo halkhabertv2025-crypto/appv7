@@ -25,8 +25,8 @@ const Zimmetler = ({ user }) => {
   const [showIadeDialog, setShowIadeDialog] = useState(false)
   const [selectedZimmet, setSelectedZimmet] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [envanterSearchTerm, setEnvanterSearchTerm] = useState('')
-  const [calisanSearchTerm, setCalisanSearchTerm] = useState('')
+  const [envanterOpen, setEnvanterOpen] = useState(false)
+  const [calisanOpen, setCalisanOpen] = useState(false)
   const [formData, setFormData] = useState({
     envanterId: '',
     calisanId: '',
