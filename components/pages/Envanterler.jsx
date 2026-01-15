@@ -471,6 +471,7 @@ const Envanterler = ({ user }) => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    <th className="w-8"></th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Envanter Tipi</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Marka</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Model</th>
@@ -483,49 +484,140 @@ const Envanterler = ({ user }) => {
                 </thead>
                 <tbody>
                   {filteredEnvanterler.map((envanter) => (
-                    <tr key={envanter.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm font-medium">{envanter.envanterTipiAd}</td>
-                      <td className="py-3 px-4 text-sm">{envanter.marka}</td>
-                      <td className="py-3 px-4 text-sm">{envanter.model}</td>
-                      <td className="py-3 px-4 text-sm font-mono">{envanter.seriNumarasi}</td>
-                      <td className="py-3 px-4">
-                        <span className={cn(
-                          "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                          envanter.durum === 'Zimmetli' && "bg-green-100 text-green-800",
-                          envanter.durum === 'Depoda' && "bg-orange-100 text-orange-800",
-                          (envanter.durum === 'Arızalı' || envanter.durum === 'Kayıp') && "bg-red-100 text-red-800"
-                        )}>
-                          {envanter.durum}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-sm">
-                        {envanter.zimmetBilgisi?.calisanAd || '-'}
-                      </td>
-                      <td className="py-3 px-4 text-sm">
-                        {envanter.zimmetBilgisi?.zimmetTarihi 
-                          ? new Date(envanter.zimmetBilgisi.zimmetTarihi).toLocaleDateString('tr-TR')
-                          : '-'
-                        }
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => openEditDialog(envanter)}
+                    <>
+                      <tr key={envanter.id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-2">
+                          <button 
+                            onClick={() => toggleRow(envanter.id)}
+                            className="p-1 hover:bg-gray-200 rounded"
                           >
-                            <Pencil size={16} />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleDelete(envanter.id)}
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
+                            {expandedRows[envanter.id] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 text-sm font-medium">{envanter.envanterTipiAd}</td>
+                        <td className="py-3 px-4 text-sm">{envanter.marka}</td>
+                        <td className="py-3 px-4 text-sm">{envanter.model}</td>
+                        <td className="py-3 px-4 text-sm font-mono">{envanter.seriNumarasi}</td>
+                        <td className="py-3 px-4">
+                          <span className={cn(
+                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                            envanter.durum === 'Zimmetli' && "bg-green-100 text-green-800",
+                            envanter.durum === 'Depoda' && "bg-orange-100 text-orange-800",
+                            (envanter.durum === 'Arızalı' || envanter.durum === 'Kayıp') && "bg-red-100 text-red-800"
+                          )}>
+                            {envanter.durum}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          {envanter.zimmetBilgisi?.calisanAd || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          {envanter.zimmetBilgisi?.zimmetTarihi 
+                            ? new Date(envanter.zimmetBilgisi.zimmetTarihi).toLocaleDateString('tr-TR')
+                            : '-'
+                          }
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => openAksesuarDialog(envanter)}
+                              title="Aksesuar Ekle"
+                            >
+                              <Package size={16} />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => openEditDialog(envanter)}
+                            >
+                              <Pencil size={16} />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDelete(envanter.id)}
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* Aksesuar satırları */}
+                      {expandedRows[envanter.id] && (
+                        <tr key={`${envanter.id}-accessories`} className="bg-gray-50">
+                          <td colSpan={9} className="py-2 px-4">
+                            <div className="ml-6 p-3 bg-white rounded-lg border">
+                              <div className="flex justify-between items-center mb-2">
+                                <h4 className="font-medium text-sm text-gray-700">Aksesuarlar</h4>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => openAksesuarDialog(envanter)}
+                                  className="h-7 text-xs"
+                                >
+                                  <Plus size={14} className="mr-1" />
+                                  Aksesuar Ekle
+                                </Button>
+                              </div>
+                              {aksesuarlar[envanter.id]?.length > 0 ? (
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className="border-b text-gray-500">
+                                      <th className="text-left py-1 px-2">Aksesuar Adı</th>
+                                      <th className="text-left py-1 px-2">Marka</th>
+                                      <th className="text-left py-1 px-2">Model</th>
+                                      <th className="text-left py-1 px-2">Seri No</th>
+                                      <th className="text-left py-1 px-2">Durum</th>
+                                      <th className="text-right py-1 px-2">İşlem</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {aksesuarlar[envanter.id].map(aks => (
+                                      <tr key={aks.id} className="border-b last:border-0">
+                                        <td className="py-1 px-2">{aks.ad}</td>
+                                        <td className="py-1 px-2">{aks.marka || '-'}</td>
+                                        <td className="py-1 px-2">{aks.model || '-'}</td>
+                                        <td className="py-1 px-2 font-mono text-xs">{aks.seriNumarasi || '-'}</td>
+                                        <td className="py-1 px-2">
+                                          <span className={cn(
+                                            "inline-flex items-center px-1.5 py-0.5 rounded text-xs",
+                                            aks.durum === 'Depoda' && "bg-orange-100 text-orange-700",
+                                            aks.durum === 'Aktif' && "bg-green-100 text-green-700",
+                                            aks.durum === 'Arızalı' && "bg-red-100 text-red-700"
+                                          )}>
+                                            {aks.durum}
+                                          </span>
+                                        </td>
+                                        <td className="py-1 px-2 text-right">
+                                          <div className="flex justify-end gap-1">
+                                            <button 
+                                              onClick={() => openAksesuarDialog(envanter, aks)}
+                                              className="p-1 hover:bg-gray-100 rounded"
+                                            >
+                                              <Pencil size={14} />
+                                            </button>
+                                            <button 
+                                              onClick={() => handleAksesuarDelete(envanter.id, aks.id)}
+                                              className="p-1 hover:bg-red-100 rounded text-red-600"
+                                            >
+                                              <Trash2 size={14} />
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : (
+                                <p className="text-gray-400 text-sm text-center py-2">Aksesuar bulunmuyor</p>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>
