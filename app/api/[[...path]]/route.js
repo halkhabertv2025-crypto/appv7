@@ -1434,6 +1434,93 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json({ success: true }))
     }
 
+    // ============= SİLİNENLERİ GERİ YÜKLEME =============
+    if (route === '/deleted/envanterler' && method === 'GET') {
+      const deleted = await db.collection('envanterler')
+        .find({ deletedAt: { $ne: null } })
+        .sort({ deletedAt: -1 })
+        .toArray()
+
+      const envanterTipleri = await db.collection('envanter_tipleri').find({}).toArray()
+      const enriched = deleted.map(env => ({
+        ...env,
+        envanterTipiAd: envanterTipleri.find(t => t.id === env.envanterTipiId)?.ad || 'Bilinmiyor'
+      }))
+
+      return handleCORS(NextResponse.json(enriched.map(({ _id, ...rest }) => rest)))
+    }
+
+    if (route === '/deleted/calisanlar' && method === 'GET') {
+      const deleted = await db.collection('calisanlar')
+        .find({ deletedAt: { $ne: null } })
+        .sort({ deletedAt: -1 })
+        .toArray()
+
+      const departmanlar = await db.collection('departmanlar').find({}).toArray()
+      const enriched = deleted.map(cal => ({
+        ...cal,
+        departmanAd: departmanlar.find(d => d.id === cal.departmanId)?.ad || 'Bilinmiyor'
+      }))
+
+      return handleCORS(NextResponse.json(enriched.map(({ _id, ...rest }) => rest)))
+    }
+
+    if (route.startsWith('/restore/envanter/') && method === 'POST') {
+      const id = route.split('/')[3]
+      const body = await request.json().catch(() => ({}))
+
+      const result = await db.collection('envanterler').updateOne(
+        { id, deletedAt: { $ne: null } },
+        { $set: { deletedAt: null, updatedAt: new Date() } }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Envanter bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'RESTORE_INVENTORY',
+        'Inventory',
+        id,
+        { action: 'Geri yüklendi' }
+      )
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
+    if (route.startsWith('/restore/calisan/') && method === 'POST') {
+      const id = route.split('/')[3]
+      const body = await request.json().catch(() => ({}))
+
+      const result = await db.collection('calisanlar').updateOne(
+        { id, deletedAt: { $ne: null } },
+        { $set: { deletedAt: null, updatedAt: new Date() } }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Çalışan bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'RESTORE_EMPLOYEE',
+        'Employee',
+        id,
+        { action: 'Geri yüklendi' }
+      )
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
     // ============= DİJİTAL VARLIKLAR =============
     if (route === '/dijital-varliklar' && method === 'GET') {
       const dijitalVarliklar = await db.collection('dijital_varliklar')
