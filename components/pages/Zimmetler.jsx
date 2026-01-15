@@ -430,70 +430,107 @@ const Zimmetler = ({ user }) => {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="envanterId">Envanter *</Label>
-                <Input
-                  placeholder="Envanter ara (marka, model, seri no)..."
-                  value={envanterSearchTerm}
-                  onChange={(e) => setEnvanterSearchTerm(e.target.value)}
-                  className="mb-2"
-                />
-                <Select 
-                  value={formData.envanterId} 
-                  onValueChange={(value) => setFormData({ ...formData, envanterId: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Envanter seçin (Sadece depodaki envanterler)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {envanterler
-                      .filter(env => {
-                        if (!envanterSearchTerm) return true
-                        const search = envanterSearchTerm.toLowerCase()
-                        return (
-                          env.marka?.toLowerCase().includes(search) ||
-                          env.model?.toLowerCase().includes(search) ||
-                          env.seriNumarasi?.toLowerCase().includes(search) ||
-                          env.envanterTipiAd?.toLowerCase().includes(search)
-                        )
-                      })
-                      .map(env => (
-                        <SelectItem key={env.id} value={env.id}>
-                          {env.envanterTipiAd} - {env.marka} {env.model} ({env.seriNumarasi})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={envanterOpen} onOpenChange={setEnvanterOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={envanterOpen}
+                      className="w-full justify-between mt-1"
+                    >
+                      {formData.envanterId
+                        ? (() => {
+                            const env = envanterler.find(e => e.id === formData.envanterId)
+                            return env ? `${env.envanterTipiAd} - ${env.marka} ${env.model} (${env.seriNumarasi})` : 'Envanter seçin'
+                          })()
+                        : "Envanter seçin (Sadece depodaki)"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[500px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Envanter ara (marka, model, seri no)..." />
+                      <CommandList>
+                        <CommandEmpty>Envanter bulunamadı.</CommandEmpty>
+                        <CommandGroup>
+                          {envanterler.map((env) => (
+                            <CommandItem
+                              key={env.id}
+                              value={`${env.envanterTipiAd} ${env.marka} ${env.model} ${env.seriNumarasi}`}
+                              onSelect={() => {
+                                setFormData({ ...formData, envanterId: env.id })
+                                setEnvanterOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.envanterId === env.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span className="font-medium">{env.envanterTipiAd} - {env.marka} {env.model}</span>
+                                <span className="text-xs text-muted-foreground">Seri No: {env.seriNumarasi}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
                 <Label htmlFor="calisanId">Çalışan *</Label>
-                <Input
-                  placeholder="Çalışan ara (ad soyad)..."
-                  value={calisanSearchTerm}
-                  onChange={(e) => setCalisanSearchTerm(e.target.value)}
-                  className="mb-2"
-                />
-                <Select 
-                  value={formData.calisanId} 
-                  onValueChange={(value) => setFormData({ ...formData, calisanId: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Çalışan seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {calisanlar
-                      .filter(cal => {
-                        if (!calisanSearchTerm) return true
-                        const search = calisanSearchTerm.toLowerCase()
-                        return cal.adSoyad?.toLowerCase().includes(search)
-                      })
-                      .map(cal => (
-                        <SelectItem key={cal.id} value={cal.id}>
-                          {cal.adSoyad} ({cal.departmanAd})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={calisanOpen} onOpenChange={setCalisanOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={calisanOpen}
+                      className="w-full justify-between mt-1"
+                    >
+                      {formData.calisanId
+                        ? (() => {
+                            const cal = calisanlar.find(c => c.id === formData.calisanId)
+                            return cal ? `${cal.adSoyad} (${cal.departmanAd})` : 'Çalışan seçin'
+                          })()
+                        : "Çalışan seçin"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[500px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Çalışan ara (ad soyad)..." />
+                      <CommandList>
+                        <CommandEmpty>Çalışan bulunamadı.</CommandEmpty>
+                        <CommandGroup>
+                          {calisanlar.map((cal) => (
+                            <CommandItem
+                              key={cal.id}
+                              value={`${cal.adSoyad} ${cal.departmanAd}`}
+                              onSelect={() => {
+                                setFormData({ ...formData, calisanId: cal.id })
+                                setCalisanOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.calisanId === cal.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span className="font-medium">{cal.adSoyad}</span>
+                                <span className="text-xs text-muted-foreground">{cal.departmanAd}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
                 <Label htmlFor="zimmetTarihi">Zimmet Tarihi *</Label>
