@@ -118,6 +118,102 @@ const Envanterler = ({ user }) => {
     }
   }
 
+  // Aksesuar fonksiyonları
+  const fetchAksesuarlar = async (envanterId) => {
+    try {
+      const response = await fetch(`/api/envanterler/${envanterId}/accessories`)
+      const data = await response.json()
+      setAksesuarlar(prev => ({ ...prev, [envanterId]: data }))
+    } catch (error) {
+      console.error('Aksesuarlar yüklenemedi')
+    }
+  }
+
+  const toggleRow = async (envanterId) => {
+    const newExpanded = { ...expandedRows, [envanterId]: !expandedRows[envanterId] }
+    setExpandedRows(newExpanded)
+    
+    if (newExpanded[envanterId] && !aksesuarlar[envanterId]) {
+      await fetchAksesuarlar(envanterId)
+    }
+  }
+
+  const openAksesuarDialog = (envanter, aksesuar = null) => {
+    setSelectedEnvanterForAksesuar(envanter)
+    setEditingAksesuar(aksesuar)
+    if (aksesuar) {
+      setAksesuarFormData({
+        ad: aksesuar.ad || '',
+        marka: aksesuar.marka || '',
+        model: aksesuar.model || '',
+        seriNumarasi: aksesuar.seriNumarasi || '',
+        durum: aksesuar.durum || 'Depoda'
+      })
+    } else {
+      setAksesuarFormData({
+        ad: '',
+        marka: '',
+        model: '',
+        seriNumarasi: '',
+        durum: 'Depoda'
+      })
+    }
+    setShowAksesuarDialog(true)
+  }
+
+  const handleAksesuarSubmit = async (e) => {
+    e.preventDefault()
+    
+    try {
+      const url = editingAksesuar
+        ? `/api/envanterler/${selectedEnvanterForAksesuar.id}/accessories/${editingAksesuar.id}`
+        : `/api/envanterler/${selectedEnvanterForAksesuar.id}/accessories`
+      
+      const response = await fetch(url, {
+        method: editingAksesuar ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aksesuarFormData)
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast({ title: 'Hata', description: data.error, variant: 'destructive' })
+        return
+      }
+
+      toast({ 
+        title: 'Başarılı', 
+        description: editingAksesuar ? 'Aksesuar güncellendi' : 'Aksesuar eklendi' 
+      })
+      
+      setShowAksesuarDialog(false)
+      fetchAksesuarlar(selectedEnvanterForAksesuar.id)
+    } catch (error) {
+      toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
+    }
+  }
+
+  const handleAksesuarDelete = async (envanterId, aksesuarId) => {
+    if (!confirm('Bu aksesuarı silmek istediğinize emin misiniz?')) return
+
+    try {
+      const response = await fetch(`/api/envanterler/${envanterId}/accessories/${aksesuarId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        toast({ title: 'Hata', description: 'Aksesuar silinemedi', variant: 'destructive' })
+        return
+      }
+
+      toast({ title: 'Başarılı', description: 'Aksesuar silindi' })
+      fetchAksesuarlar(envanterId)
+    } catch (error) {
+      toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
