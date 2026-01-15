@@ -7,21 +7,24 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Users, ChevronDown, ChevronRight } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 const Departmanlar = ({ user }) => {
   const [departmanlar, setDepartmanlar] = useState([])
   const [filteredDepartmanlar, setFilteredDepartmanlar] = useState([])
+  const [calisanlar, setCalisanlar] = useState([])
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)
   const [editingDepartman, setEditingDepartman] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [expandedDepts, setExpandedDepts] = useState({})
   const [formData, setFormData] = useState({ ad: '', aciklama: '' })
   const { toast } = useToast()
 
   useEffect(() => {
     fetchDepartmanlar()
+    fetchCalisanlar()
   }, [])
 
   useEffect(() => {
@@ -43,6 +46,24 @@ const Departmanlar = ({ user }) => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchCalisanlar = async () => {
+    try {
+      const response = await fetch('/api/calisanlar')
+      const data = await response.json()
+      setCalisanlar(data)
+    } catch (error) {
+      console.error('Çalışanlar yüklenemedi')
+    }
+  }
+
+  const getCalisanlarByDept = (deptId) => {
+    return calisanlar.filter(c => c.departmanId === deptId && c.durum === 'Aktif')
+  }
+
+  const toggleDept = (deptId) => {
+    setExpandedDepts(prev => ({ ...prev, [deptId]: !prev[deptId] }))
   }
 
   const handleSubmit = async (e) => {
