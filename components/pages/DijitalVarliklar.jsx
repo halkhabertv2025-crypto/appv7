@@ -26,6 +26,7 @@ const DijitalVarliklar = ({ user }) => {
   const [filterKategori, setFilterKategori] = useState('all')
   const [filterDurum, setFilterDurum] = useState('all')
   const [showPasswords, setShowPasswords] = useState({})
+  const [editingKategori, setEditingKategori] = useState(null)
   const [formData, setFormData] = useState({
     ad: '',
     kategoriId: '',
