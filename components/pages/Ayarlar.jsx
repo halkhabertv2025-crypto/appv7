@@ -8,10 +8,13 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { FileText, Search, Filter } from 'lucide-react'
+import { FileText, Search, Filter, RotateCcw, Package, Users } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 export default function Ayarlar() {
   const [auditLogs, setAuditLogs] = useState([])
+  const [deletedEnvanterler, setDeletedEnvanterler] = useState([])
+  const [deletedCalisanlar, setDeletedCalisanlar] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedLog, setSelectedLog] = useState(null)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
@@ -27,10 +30,58 @@ export default function Ayarlar() {
     total: 0,
     pages: 0
   })
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchAuditLogs()
   }, [pagination.page, filters])
+
+  const fetchDeletedItems = async () => {
+    try {
+      const [envRes, calRes] = await Promise.all([
+        fetch('/api/deleted/envanterler'),
+        fetch('/api/deleted/calisanlar')
+      ])
+      const envData = await envRes.json()
+      const calData = await calRes.json()
+      setDeletedEnvanterler(envData)
+      setDeletedCalisanlar(calData)
+    } catch (error) {
+      console.error('Silinen öğeler yüklenemedi')
+    }
+  }
+
+  const restoreEnvanter = async (id) => {
+    try {
+      const response = await fetch(`/api/restore/envanter/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      if (response.ok) {
+        toast({ title: 'Başarılı', description: 'Envanter geri yüklendi' })
+        fetchDeletedItems()
+      }
+    } catch (error) {
+      toast({ title: 'Hata', description: 'Geri yükleme başarısız', variant: 'destructive' })
+    }
+  }
+
+  const restoreCalisan = async (id) => {
+    try {
+      const response = await fetch(`/api/restore/calisan/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      if (response.ok) {
+        toast({ title: 'Başarılı', description: 'Çalışan geri yüklendi' })
+        fetchDeletedItems()
+      }
+    } catch (error) {
+      toast({ title: 'Hata', description: 'Geri yükleme başarısız', variant: 'destructive' })
+    }
+  }
 
   const fetchAuditLogs = async () => {
     setLoading(true)
