@@ -169,6 +169,7 @@ export default function Ayarlar() {
       <Tabs defaultValue="audit-log" className="w-full">
         <TabsList>
           <TabsTrigger value="audit-log">İşlem Geçmişi</TabsTrigger>
+          <TabsTrigger value="restore" onClick={fetchDeletedItems}>Geri Yükle</TabsTrigger>
           <TabsTrigger value="system">Sistem Ayarları</TabsTrigger>
         </TabsList>
 
