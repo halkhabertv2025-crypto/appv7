@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Plus, Search, Download, CheckCircle, FileText, Check, ChevronsUpDown } from 'lucide-react'
+import { Plus, Search, Download, CheckCircle, FileText, Check, ChevronsUpDown, Eye } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import jsPDF from 'jspdf'
@@ -23,6 +23,7 @@ const Zimmetler = ({ user }) => {
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)
   const [showIadeDialog, setShowIadeDialog] = useState(false)
+  const [showDetailDialog, setShowDetailDialog] = useState(false)
   const [selectedZimmet, setSelectedZimmet] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [envanterOpen, setEnvanterOpen] = useState(false)
@@ -410,6 +411,17 @@ const Zimmetler = ({ user }) => {
                           <Button 
                             variant="outline" 
                             size="sm"
+                            onClick={() => {
+                              setSelectedZimmet(zimmet)
+                              setShowDetailDialog(true)
+                            }}
+                            title="Detay Görüntüle"
+                          >
+                            <Eye size={16} />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
                             onClick={() => generateZimmetPDF(zimmet)}
                             title="PDF İndir"
                           >
@@ -580,6 +592,139 @@ const Zimmetler = ({ user }) => {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detay Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Zimmet Detayları</DialogTitle>
+          </DialogHeader>
+          {selectedZimmet && (
+            <div className="space-y-6">
+              {/* Envanter Bilgileri */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-600 mb-2">Envanter Bilgileri</h4>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs text-gray-500">Tip</span>
+                      <div className="font-medium">{selectedZimmet.envanterBilgisi?.tip || '-'}</div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Marka</span>
+                      <div className="font-medium">{selectedZimmet.envanterBilgisi?.marka || '-'}</div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Model</span>
+                      <div className="font-medium">{selectedZimmet.envanterBilgisi?.model || '-'}</div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Seri Numarası</span>
+                      <div className="font-medium font-mono">{selectedZimmet.envanterBilgisi?.seriNumarasi || '-'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Çalışan Bilgileri */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-600 mb-2">Çalışan Bilgileri</h4>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs text-gray-500">Ad Soyad</span>
+                      <div className="font-medium">{selectedZimmet.calisanAd || '-'}</div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Departman</span>
+                      <div className="font-medium">{selectedZimmet.departmanAd || '-'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Zimmet Bilgileri */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-600 mb-2">Zimmet Bilgileri</h4>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs text-gray-500">Zimmet Tarihi</span>
+                      <div className="font-medium">
+                        {selectedZimmet.zimmetTarihi 
+                          ? new Date(selectedZimmet.zimmetTarihi).toLocaleDateString('tr-TR')
+                          : '-'}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500">Durum</span>
+                      <div>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {selectedZimmet.durum}
+                        </span>
+                      </div>
+                    </div>
+                    {selectedZimmet.iadeTarihi && (
+                      <div>
+                        <span className="text-xs text-gray-500">İade Tarihi</span>
+                        <div className="font-medium">
+                          {new Date(selectedZimmet.iadeTarihi).toLocaleDateString('tr-TR')}
+                        </div>
+                      </div>
+                    )}
+                    {selectedZimmet.iadeAlanYetkili && (
+                      <div>
+                        <span className="text-xs text-gray-500">İade Alan Yetkili</span>
+                        <div className="font-medium">{selectedZimmet.iadeAlanYetkili.adSoyad}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Notlar / Açıklama */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-600 mb-2">Notlar / Açıklama</h4>
+                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                  {selectedZimmet.aciklama ? (
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedZimmet.aciklama}</p>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">Not eklenmemiş</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Kayıt Bilgileri */}
+              <div className="border-t pt-4">
+                <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
+                  <div>
+                    <span>Oluşturulma:</span>{' '}
+                    {selectedZimmet.createdAt 
+                      ? new Date(selectedZimmet.createdAt).toLocaleString('tr-TR')
+                      : '-'}
+                  </div>
+                  <div>
+                    <span>Zimmet ID:</span>{' '}
+                    <span className="font-mono">{selectedZimmet.id?.substring(0, 8)}...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
+              Kapat
+            </Button>
+            <Button 
+              onClick={() => generateZimmetPDF(selectedZimmet)}
+              className="bg-teal-500 hover:bg-teal-600"
+            >
+              <FileText size={16} className="mr-2" />
+              PDF İndir
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
