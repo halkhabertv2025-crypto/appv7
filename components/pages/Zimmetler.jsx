@@ -46,14 +46,32 @@ const Zimmetler = ({ user }) => {
   }, [])
 
   useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredZimmetler(zimmetler)
+      return
+    }
+    
+    const searchLower = searchTerm.toLowerCase().trim()
     const filtered = zimmetler.filter(zimmet => {
-      const searchLower = searchTerm.toLowerCase()
+      // Seri numarası ile arama (öncelikli)
+      const seriNumarasi = zimmet.envanterBilgisi?.seriNumarasi || ''
+      if (seriNumarasi.toLowerCase().includes(searchLower)) {
+        return true
+      }
+      
+      // Diğer alanlar ile arama
+      const calisanAd = zimmet.calisanAd || ''
+      const departmanAd = zimmet.departmanAd || ''
+      const marka = zimmet.envanterBilgisi?.marka || ''
+      const model = zimmet.envanterBilgisi?.model || ''
+      const tip = zimmet.envanterBilgisi?.tip || ''
+      
       return (
-        zimmet.calisanAd?.toLowerCase().includes(searchLower) ||
-        zimmet.departmanAd?.toLowerCase().includes(searchLower) ||
-        zimmet.envanterBilgisi?.marka?.toLowerCase().includes(searchLower) ||
-        zimmet.envanterBilgisi?.model?.toLowerCase().includes(searchLower) ||
-        zimmet.envanterBilgisi?.seriNumarasi?.toLowerCase().includes(searchLower)
+        calisanAd.toLowerCase().includes(searchLower) ||
+        departmanAd.toLowerCase().includes(searchLower) ||
+        marka.toLowerCase().includes(searchLower) ||
+        model.toLowerCase().includes(searchLower) ||
+        tip.toLowerCase().includes(searchLower)
       )
     })
     setFilteredZimmetler(filtered)
@@ -337,7 +355,7 @@ const Zimmetler = ({ user }) => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <Input
-                placeholder="Zimmet ara..."
+                placeholder="Seri no, çalışan, marka, model ile ara..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
