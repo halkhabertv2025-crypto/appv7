@@ -287,14 +287,25 @@ async function handleRoute(request, { params }) {
         ))
       }
 
-      // Audit log
+      // Audit log with before/after comparison
+      const changedFields = {}
+      if (updateFields.ad && updateFields.ad !== existingDept?.ad) {
+        changedFields.ad = { onceki: existingDept?.ad, yeni: updateFields.ad }
+      }
+      if (updateFields.aciklama !== undefined && updateFields.aciklama !== existingDept?.aciklama) {
+        changedFields.aciklama = { onceki: existingDept?.aciklama || '', yeni: updateFields.aciklama }
+      }
+      
       await createAuditLog(
         userId || 'system',
         userName || 'System',
         'UPDATE_DEPARTMENT',
         'Department',
         id,
-        { departmentName: updateFields.ad || existingDept?.ad }
+        { 
+          departmentName: existingDept?.ad,
+          degisiklikler: changedFields
+        }
       )
 
       return handleCORS(NextResponse.json({ success: true }))
@@ -489,15 +500,42 @@ async function handleRoute(request, { params }) {
         ))
       }
 
-      // Audit log
+      // Audit log with before/after comparison
       const requestingUserForLog = authHeader ? await db.collection('calisanlar').findOne({ id: authHeader }) : null
+      
+      const changedFields = {}
+      if (updateFields.adSoyad && updateFields.adSoyad !== existingCalisan?.adSoyad) {
+        changedFields.adSoyad = { onceki: existingCalisan?.adSoyad, yeni: updateFields.adSoyad }
+      }
+      if (updateFields.email && updateFields.email !== existingCalisan?.email) {
+        changedFields.email = { onceki: existingCalisan?.email, yeni: updateFields.email }
+      }
+      if (updateFields.telefon !== undefined && updateFields.telefon !== existingCalisan?.telefon) {
+        changedFields.telefon = { onceki: existingCalisan?.telefon || '', yeni: updateFields.telefon }
+      }
+      if (updateFields.departmanId && updateFields.departmanId !== existingCalisan?.departmanId) {
+        changedFields.departmanId = { onceki: existingCalisan?.departmanId, yeni: updateFields.departmanId }
+      }
+      if (updateFields.durum && updateFields.durum !== existingCalisan?.durum) {
+        changedFields.durum = { onceki: existingCalisan?.durum, yeni: updateFields.durum }
+      }
+      if (updateFields.yoneticiYetkisi !== undefined && updateFields.yoneticiYetkisi !== existingCalisan?.yoneticiYetkisi) {
+        changedFields.yoneticiYetkisi = { onceki: existingCalisan?.yoneticiYetkisi, yeni: updateFields.yoneticiYetkisi }
+      }
+      if (updateFields.adminYetkisi !== undefined && updateFields.adminYetkisi !== existingCalisan?.adminYetkisi) {
+        changedFields.adminYetkisi = { onceki: existingCalisan?.adminYetkisi, yeni: updateFields.adminYetkisi }
+      }
+      
       await createAuditLog(
         authHeader || userId || 'system',
         requestingUserForLog?.adSoyad || userName || 'System',
         'UPDATE_EMPLOYEE',
         'Employee',
         id,
-        { employeeName: existingCalisan?.adSoyad }
+        { 
+          employeeName: existingCalisan?.adSoyad,
+          degisiklikler: changedFields
+        }
       )
 
       return handleCORS(NextResponse.json({ success: true }))
@@ -839,20 +877,40 @@ async function handleRoute(request, { params }) {
         { $set: updateData }
       )
 
-      // Audit log for status change (Kayıp, Arızalı, Depoda)
-      if (logStatusChange && body.durum && body.durum !== oldDurum && body.durum !== 'Zimmetli') {
+      // Audit log with before/after comparison
+      const changedFields = {}
+      if (cleanBody.marka && cleanBody.marka !== currentEnvanter.marka) {
+        changedFields.marka = { onceki: currentEnvanter.marka, yeni: cleanBody.marka }
+      }
+      if (cleanBody.model && cleanBody.model !== currentEnvanter.model) {
+        changedFields.model = { onceki: currentEnvanter.model, yeni: cleanBody.model }
+      }
+      if (cleanBody.seriNumarasi && cleanBody.seriNumarasi !== currentEnvanter.seriNumarasi) {
+        changedFields.seriNumarasi = { onceki: currentEnvanter.seriNumarasi, yeni: cleanBody.seriNumarasi }
+      }
+      if (cleanBody.durum && cleanBody.durum !== currentEnvanter.durum) {
+        changedFields.durum = { onceki: currentEnvanter.durum, yeni: cleanBody.durum }
+      }
+      if (cleanBody.notlar !== undefined && cleanBody.notlar !== currentEnvanter.notlar) {
+        changedFields.notlar = { onceki: currentEnvanter.notlar || '', yeni: cleanBody.notlar }
+      }
+      if (cleanBody.envanterTipiId && cleanBody.envanterTipiId !== currentEnvanter.envanterTipiId) {
+        changedFields.envanterTipiId = { onceki: currentEnvanter.envanterTipiId, yeni: cleanBody.envanterTipiId }
+      }
+      
+      // Only log if there are actual changes
+      if (Object.keys(changedFields).length > 0) {
         await createAuditLog(
           userId || 'system',
           userName || 'System',
-          'UPDATE_INVENTORY_STATUS',
+          'UPDATE_INVENTORY',
           'Inventory',
           id,
           {
             marka: currentEnvanter.marka,
             model: currentEnvanter.model,
             seriNumarasi: currentEnvanter.seriNumarasi,
-            previousStatus: oldDurum,
-            newStatus: body.durum
+            degisiklikler: changedFields
           }
         )
       }
@@ -1603,6 +1661,9 @@ async function handleRoute(request, { params }) {
       const id = route.split('/')[2]
       const body = await request.json()
 
+      // Get current dijital varlik for comparison
+      const currentDijitalVarlik = await db.collection('dijital_varliklar').findOne({ id, deletedAt: null })
+      
       const { userId, userName, ...updateFields } = body
 
       const updateData = {
@@ -1624,14 +1685,40 @@ async function handleRoute(request, { params }) {
         ))
       }
 
-      // Audit log
+      // Audit log with before/after comparison
+      const changedFields = {}
+      if (updateFields.ad && updateFields.ad !== currentDijitalVarlik?.ad) {
+        changedFields.ad = { onceki: currentDijitalVarlik?.ad, yeni: updateFields.ad }
+      }
+      if (updateFields.hesapEmail !== undefined && updateFields.hesapEmail !== currentDijitalVarlik?.hesapEmail) {
+        changedFields.hesapEmail = { onceki: currentDijitalVarlik?.hesapEmail || '', yeni: updateFields.hesapEmail }
+      }
+      if (updateFields.hesapKullaniciAdi !== undefined && updateFields.hesapKullaniciAdi !== currentDijitalVarlik?.hesapKullaniciAdi) {
+        changedFields.hesapKullaniciAdi = { onceki: currentDijitalVarlik?.hesapKullaniciAdi || '', yeni: updateFields.hesapKullaniciAdi }
+      }
+      if (updateFields.durum && updateFields.durum !== currentDijitalVarlik?.durum) {
+        changedFields.durum = { onceki: currentDijitalVarlik?.durum, yeni: updateFields.durum }
+      }
+      if (updateFields.lisansTipi && updateFields.lisansTipi !== currentDijitalVarlik?.lisansTipi) {
+        changedFields.lisansTipi = { onceki: currentDijitalVarlik?.lisansTipi, yeni: updateFields.lisansTipi }
+      }
+      if (updateFields.calisanId !== undefined && updateFields.calisanId !== currentDijitalVarlik?.calisanId) {
+        changedFields.calisanId = { onceki: currentDijitalVarlik?.calisanId, yeni: updateFields.calisanId }
+      }
+      if (updateFields.envanterId !== undefined && updateFields.envanterId !== currentDijitalVarlik?.envanterId) {
+        changedFields.envanterId = { onceki: currentDijitalVarlik?.envanterId, yeni: updateFields.envanterId }
+      }
+      
       await createAuditLog(
         userId || 'system',
         userName || 'System',
         'UPDATE_DIGITAL_ASSET',
         'DigitalAsset',
         id,
-        { assetName: updateFields.ad }
+        { 
+          assetName: currentDijitalVarlik?.ad,
+          degisiklikler: changedFields
+        }
       )
 
       return handleCORS(NextResponse.json({ success: true }))

@@ -138,7 +138,8 @@ export default function Ayarlar() {
     'Inventory': 'Envanter',
     'Zimmet': 'Zimmet',
     'Department': 'Departman',
-    'User': 'Kullanıcı'
+    'User': 'Kullanıcı',
+    'DigitalAsset': 'Dijital Varlık'
   }
 
   const openDetailDialog = (log) => {
@@ -629,13 +630,109 @@ export default function Ayarlar() {
               </div>
 
               {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
-                <div>
-                  <div className="text-sm text-gray-600 mb-2">Detaylar</div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <pre className="text-xs overflow-x-auto">
-                      {JSON.stringify(selectedLog.details, null, 2)}
-                    </pre>
-                  </div>
+                <div className="space-y-4">
+                  {/* Temel Bilgiler */}
+                  {(selectedLog.details.employeeName || selectedLog.details.departmentName || 
+                    selectedLog.details.assetName || selectedLog.details.marka) && (
+                    <div>
+                      <div className="text-sm text-gray-600 mb-2">Etkilenen Kayıt</div>
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        {selectedLog.details.employeeName && (
+                          <div className="text-sm"><strong>Çalışan:</strong> {selectedLog.details.employeeName}</div>
+                        )}
+                        {selectedLog.details.departmentName && (
+                          <div className="text-sm"><strong>Departman:</strong> {selectedLog.details.departmentName}</div>
+                        )}
+                        {selectedLog.details.assetName && (
+                          <div className="text-sm"><strong>Dijital Varlık:</strong> {selectedLog.details.assetName}</div>
+                        )}
+                        {selectedLog.details.marka && (
+                          <div className="text-sm"><strong>Envanter:</strong> {selectedLog.details.marka} {selectedLog.details.model} ({selectedLog.details.seriNumarasi})</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Değişiklikler - Before/After */}
+                  {selectedLog.details.degisiklikler && Object.keys(selectedLog.details.degisiklikler).length > 0 && (
+                    <div>
+                      <div className="text-sm text-gray-600 mb-2">Yapılan Değişiklikler</div>
+                      <div className="bg-gray-50 rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="text-left py-2 px-3 font-medium text-gray-600">Alan</th>
+                              <th className="text-left py-2 px-3 font-medium text-gray-600">Eski Değer</th>
+                              <th className="text-left py-2 px-3 font-medium text-gray-600">Yeni Değer</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.entries(selectedLog.details.degisiklikler).map(([field, values]) => (
+                              <tr key={field} className="border-t border-gray-200">
+                                <td className="py-2 px-3 font-medium text-gray-700">
+                                  {{
+                                    'ad': 'Ad',
+                                    'adSoyad': 'Ad Soyad',
+                                    'email': 'Email',
+                                    'telefon': 'Telefon',
+                                    'departmanId': 'Departman',
+                                    'durum': 'Durum',
+                                    'aciklama': 'Açıklama',
+                                    'marka': 'Marka',
+                                    'model': 'Model',
+                                    'seriNumarasi': 'Seri Numarası',
+                                    'notlar': 'Notlar',
+                                    'envanterTipiId': 'Envanter Tipi',
+                                    'yoneticiYetkisi': 'Yönetici Yetkisi',
+                                    'adminYetkisi': 'Admin Yetkisi',
+                                    'hesapEmail': 'Hesap Email',
+                                    'hesapKullaniciAdi': 'Kullanıcı Adı',
+                                    'lisansTipi': 'Lisans Tipi',
+                                    'calisanId': 'Çalışan',
+                                    'envanterId': 'Envanter'
+                                  }[field] || field}
+                                </td>
+                                <td className="py-2 px-3">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-800 text-xs">
+                                    {typeof values.onceki === 'boolean' 
+                                      ? (values.onceki ? 'Evet' : 'Hayır') 
+                                      : (values.onceki || '-')}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-3">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">
+                                    {typeof values.yeni === 'boolean' 
+                                      ? (values.yeni ? 'Evet' : 'Hayır') 
+                                      : (values.yeni || '-')}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Diğer Detaylar (degisiklikler dışındaki alanlar) */}
+                  {Object.keys(selectedLog.details).filter(k => 
+                    !['degisiklikler', 'employeeName', 'departmentName', 'assetName', 'marka', 'model', 'seriNumarasi'].includes(k)
+                  ).length > 0 && (
+                    <div>
+                      <div className="text-sm text-gray-600 mb-2">Ek Bilgiler</div>
+                      <div className="bg-gray-50 p-3 rounded-lg space-y-1">
+                        {Object.entries(selectedLog.details)
+                          .filter(([k]) => !['degisiklikler', 'employeeName', 'departmentName', 'assetName', 'marka', 'model', 'seriNumarasi'].includes(k))
+                          .map(([key, value]) => (
+                            <div key={key} className="text-sm">
+                              <strong className="text-gray-600">{key}:</strong>{' '}
+                              <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                            </div>
+                          ))
+                        }
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
