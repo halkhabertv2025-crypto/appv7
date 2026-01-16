@@ -597,12 +597,12 @@ const Zimmetler = ({ user }) => {
 
       {/* Detay Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl overflow-hidden">
           <DialogHeader>
             <DialogTitle>Zimmet Detayları</DialogTitle>
           </DialogHeader>
           {selectedZimmet && (
-            <div className="space-y-6">
+            <div className="space-y-6 overflow-x-hidden max-h-[70vh] overflow-y-auto">
               {/* Envanter Bilgileri */}
               <div>
                 <h4 className="text-sm font-medium text-gray-600 mb-2">Envanter Bilgileri</h4>
@@ -685,11 +685,11 @@ const Zimmetler = ({ user }) => {
               </div>
 
               {/* Notlar / Açıklama */}
-              <div>
+              <div className="min-w-0">
                 <h4 className="text-sm font-medium text-gray-600 mb-2">Notlar / Açıklama</h4>
-                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 max-h-40 overflow-y-auto">
+                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 max-h-40 overflow-y-auto overflow-x-hidden">
                   {selectedZimmet.aciklama ? (
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{selectedZimmet.aciklama}</p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-all" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>{selectedZimmet.aciklama}</p>
                   ) : (
                     <p className="text-sm text-gray-400 italic">Not eklenmemiş</p>
                   )}
