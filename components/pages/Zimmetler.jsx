@@ -687,9 +687,9 @@ const Zimmetler = ({ user }) => {
               {/* Notlar / Açıklama */}
               <div>
                 <h4 className="text-sm font-medium text-gray-600 mb-2">Notlar / Açıklama</h4>
-                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 max-w-full overflow-hidden">
                   {selectedZimmet.aciklama ? (
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{selectedZimmet.aciklama}</p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-all">{selectedZimmet.aciklama}</p>
                   ) : (
                     <p className="text-sm text-gray-400 italic">Not eklenmemiş</p>
                   )}
