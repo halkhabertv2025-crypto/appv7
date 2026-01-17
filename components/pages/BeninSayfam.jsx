@@ -53,55 +53,45 @@ const BeninSayfam = () => {
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
-                <TabsTrigger 
-                  value="temel-bilgiler" 
+                <TabsTrigger
+                  value="temel-bilgiler"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent"
                 >
                   Temel Bilgiler
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="kisisel-bilgiler"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent"
-                >
-                  Kişisel Bilgiler
-                </TabsTrigger>
-                <TabsTrigger 
+
+                <TabsTrigger
                   value="zimmetler"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent"
                 >
                   Zimmetler
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="maas-tutari"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent"
-                >
-                  Maaş Tutarı
-                </TabsTrigger>
-                <TabsTrigger 
+
+                <TabsTrigger
                   value="atamalar"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent"
                 >
                   Atamalar
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="iletisim"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent"
                 >
                   İletişim
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="ozel-alanlar"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent"
                 >
                   Özel Alanlar
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="sozlesmelerim"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent"
                 >
                   Sözleşmelerim
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="evraklarim"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-500 data-[state=active]:bg-transparent"
                 >
@@ -173,13 +163,7 @@ const BeninSayfam = () => {
                   </div>
                 </TabsContent>
 
-                {/* Kişisel Bilgiler */}
-                <TabsContent value="kisisel-bilgiler" className="mt-0">
-                  <div className="text-center py-12 text-gray-500">
-                    <User size={48} className="mx-auto mb-4 text-gray-300" />
-                    <p>Kişisel bilgiler bölümü</p>
-                  </div>
-                </TabsContent>
+
 
                 {/* Zimmetler */}
                 <TabsContent value="zimmetler" className="mt-0">
@@ -189,13 +173,7 @@ const BeninSayfam = () => {
                   </div>
                 </TabsContent>
 
-                {/* Maaş Tutarı */}
-                <TabsContent value="maas-tutari" className="mt-0">
-                  <div className="text-center py-12 text-gray-500">
-                    <DollarSign size={48} className="mx-auto mb-4 text-gray-300" />
-                    <p>Maaş bilgileri bölümü</p>
-                  </div>
-                </TabsContent>
+
 
                 {/* Atamalar */}
                 <TabsContent value="atamalar" className="mt-0">

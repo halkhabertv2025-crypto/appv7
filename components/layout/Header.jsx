@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, HelpCircle, ChevronDown, LogOut, User, Shield } from 'lucide-react'
+import { Bell, HelpCircle, ChevronDown, LogOut, User, Shield, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const Header = ({ user, onLogout }) => {
+const Header = ({ user, onLogout, onMenuClick }) => {
   const getInitials = (name) => {
     return name
       .split(' ')
@@ -24,7 +24,10 @@ const Header = ({ user, onLogout }) => {
     <header className="bg-white border-b border-gray-200 px-6 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-semibold text-gray-800">
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenuClick}>
+            <Menu size={24} />
+          </Button>
+          <h1 className="text-xl font-semibold text-gray-800 hidden md:block">
             Merhaba, {user?.adSoyad || 'Kullanıcı'} 👋
           </h1>
           {user?.adminYetkisi && (
@@ -39,30 +42,17 @@ const Header = ({ user, onLogout }) => {
             </span>
           )}
         </div>
-        
+
         <div className="flex items-center space-x-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                TR <ChevronDown size={16} className="ml-1" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem>Türkçe</DropdownMenuItem>
-              <DropdownMenuItem>English</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <Button variant="outline" size="sm" className="text-teal-600 border-teal-600">
-            <HelpCircle size={16} className="mr-2" />
-            Destek için tıkla!
-          </Button>
-          
+
+
+
+
           <Button variant="ghost" size="icon" className="relative">
             <Bell size={20} />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
           </Button>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center space-x-2">

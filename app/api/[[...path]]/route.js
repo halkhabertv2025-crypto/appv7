@@ -69,7 +69,7 @@ async function handleRoute(request, { params }) {
     // ============= AUTHENTICATION =============
     if (route === '/auth/login' && method === 'POST') {
       const body = await request.json()
-      
+
       if (!body.email || !body.sifre) {
         return handleCORS(NextResponse.json(
           { error: "Email ve şifre zorunludur" },
@@ -77,9 +77,9 @@ async function handleRoute(request, { params }) {
         ))
       }
 
-      const calisan = await db.collection('calisanlar').findOne({ 
-        email: body.email, 
-        deletedAt: null 
+      const calisan = await db.collection('calisanlar').findOne({
+        email: body.email,
+        deletedAt: null
       })
 
       if (!calisan) {
@@ -125,6 +125,16 @@ async function handleRoute(request, { params }) {
         token: uuidv4() // Simple token for session
       }
 
+      // Log login event
+      await createAuditLog(
+        calisan.id,
+        calisan.adSoyad,
+        'USER_LOGIN',
+        'Auth',
+        calisan.id,
+        { email: calisan.email }
+      )
+
       return handleCORS(NextResponse.json(userData))
     }
 
@@ -140,9 +150,9 @@ async function handleRoute(request, { params }) {
       // For simplicity, we're using email as identifier
       // In production, use proper JWT tokens
       const email = authHeader.replace('Bearer ', '')
-      const calisan = await db.collection('calisanlar').findOne({ 
-        email, 
-        deletedAt: null 
+      const calisan = await db.collection('calisanlar').findOne({
+        email,
+        deletedAt: null
       })
 
       if (!calisan) {
@@ -170,7 +180,7 @@ async function handleRoute(request, { params }) {
       const envanterler = await db.collection('envanterler')
         .find({ deletedAt: null })
         .toArray()
-      
+
       const zimmetler = await db.collection('zimmetler')
         .find({ deletedAt: null, durum: 'Aktif' })
         .sort({ createdAt: -1 })
@@ -203,9 +213,21 @@ async function handleRoute(request, { params }) {
         arizali: envanterler.filter(e => e.durum === 'Arızalı' || e.durum === 'Kayıp').length
       }
 
-      return handleCORS(NextResponse.json({ 
-        stats, 
-        recentZimmetler: enrichedZimmetler 
+      // Fetch recent logins
+      const recentLogins = await db.collection('audit_logs')
+        .find({ actionType: 'USER_LOGIN' })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .toArray()
+
+      return handleCORS(NextResponse.json({
+        stats,
+        recentZimmetler: enrichedZimmetler,
+        recentLogins: recentLogins.map(log => ({
+          userId: log.actorUserId,
+          userName: log.actorUserName,
+          timestamp: log.createdAt
+        }))
       }))
     }
 
@@ -215,13 +237,13 @@ async function handleRoute(request, { params }) {
         .find({ deletedAt: null })
         .sort({ createdAt: -1 })
         .toArray()
-      
+
       return handleCORS(NextResponse.json(departmanlar.map(({ _id, ...rest }) => rest)))
     }
 
     if (route === '/departmanlar' && method === 'POST') {
       const body = await request.json()
-      
+
       if (!body.ad) {
         return handleCORS(NextResponse.json(
           { error: "Departman adı zorunludur" },
@@ -248,7 +270,7 @@ async function handleRoute(request, { params }) {
       }
 
       await db.collection('departmanlar').insertOne(departman)
-      
+
       // Audit log
       await createAuditLog(
         body.userId || 'system',
@@ -258,7 +280,7 @@ async function handleRoute(request, { params }) {
         departman.id,
         { departmentName: departman.ad }
       )
-      
+
       const { _id, ...result } = departman
       return handleCORS(NextResponse.json(result))
     }
@@ -295,14 +317,14 @@ async function handleRoute(request, { params }) {
       if (updateFields.aciklama !== undefined && updateFields.aciklama !== existingDept?.aciklama) {
         changedFields.aciklama = { onceki: existingDept?.aciklama || '', yeni: updateFields.aciklama }
       }
-      
+
       await createAuditLog(
         userId || 'system',
         userName || 'System',
         'UPDATE_DEPARTMENT',
         'Department',
         id,
-        { 
+        {
           departmentName: existingDept?.ad,
           degisiklikler: changedFields
         }
@@ -348,12 +370,12 @@ async function handleRoute(request, { params }) {
         .find({ deletedAt: null })
         .sort({ createdAt: -1 })
         .toArray()
-      
+
       // Get all active zimmetler
       const aktifZimmetler = await db.collection('zimmetler')
         .find({ durum: 'Aktif', deletedAt: null })
         .toArray()
-      
+
       // Add department names and zimmet count
       const enrichedCalisanlar = await Promise.all(
         calisanlar.map(async (calisan) => {
@@ -373,7 +395,7 @@ async function handleRoute(request, { params }) {
 
     if (route === '/calisanlar' && method === 'POST') {
       const body = await request.json()
-      
+
       if (!body.adSoyad || !body.departmanId) {
         return handleCORS(NextResponse.json(
           { error: "Ad Soyad ve Departman zorunludur" },
@@ -384,11 +406,11 @@ async function handleRoute(request, { params }) {
       // Check admin authorization for role assignment
       const authHeader = request.headers.get('x-user-id')
       if ((body.adminYetkisi || body.yoneticiYetkisi) && authHeader) {
-        const requestingUser = await db.collection('calisanlar').findOne({ 
-          id: authHeader, 
-          deletedAt: null 
+        const requestingUser = await db.collection('calisanlar').findOne({
+          id: authHeader,
+          deletedAt: null
         })
-        
+
         if (!requestingUser || !requestingUser.adminYetkisi) {
           return handleCORS(NextResponse.json(
             { error: "Sadece admin kullanıcılar yetki atayabilir" },
@@ -447,16 +469,16 @@ async function handleRoute(request, { params }) {
       // Check admin authorization for role changes
       const authHeader = request.headers.get('x-user-id')
       const existingCalisan = await db.collection('calisanlar').findOne({ id, deletedAt: null })
-      
+
       if ((body.adminYetkisi !== undefined || body.yoneticiYetkisi !== undefined) && authHeader) {
-        if (existingCalisan && 
-            (body.adminYetkisi !== existingCalisan.adminYetkisi || 
-             body.yoneticiYetkisi !== existingCalisan.yoneticiYetkisi)) {
-          const requestingUser = await db.collection('calisanlar').findOne({ 
-            id: authHeader, 
-            deletedAt: null 
+        if (existingCalisan &&
+          (body.adminYetkisi !== existingCalisan.adminYetkisi ||
+            body.yoneticiYetkisi !== existingCalisan.yoneticiYetkisi)) {
+          const requestingUser = await db.collection('calisanlar').findOne({
+            id: authHeader,
+            deletedAt: null
           })
-          
+
           if (!requestingUser || !requestingUser.adminYetkisi) {
             return handleCORS(NextResponse.json(
               { error: "Sadece admin kullanıcılar yetki değiştirebilir" },
@@ -502,7 +524,7 @@ async function handleRoute(request, { params }) {
 
       // Audit log with before/after comparison
       const requestingUserForLog = authHeader ? await db.collection('calisanlar').findOne({ id: authHeader }) : null
-      
+
       const changedFields = {}
       if (updateFields.adSoyad && updateFields.adSoyad !== existingCalisan?.adSoyad) {
         changedFields.adSoyad = { onceki: existingCalisan?.adSoyad, yeni: updateFields.adSoyad }
@@ -525,14 +547,14 @@ async function handleRoute(request, { params }) {
       if (updateFields.adminYetkisi !== undefined && updateFields.adminYetkisi !== existingCalisan?.adminYetkisi) {
         changedFields.adminYetkisi = { onceki: existingCalisan?.adminYetkisi, yeni: updateFields.adminYetkisi }
       }
-      
+
       await createAuditLog(
         authHeader || userId || 'system',
         requestingUserForLog?.adSoyad || userName || 'System',
         'UPDATE_EMPLOYEE',
         'Employee',
         id,
-        { 
+        {
           employeeName: existingCalisan?.adSoyad,
           degisiklikler: changedFields
         }
@@ -543,12 +565,12 @@ async function handleRoute(request, { params }) {
 
     if (route.startsWith('/calisanlar/') && route.endsWith('/zimmetler') && method === 'GET') {
       const id = route.split('/')[2]
-      
+
       const zimmetler = await db.collection('zimmetler')
         .find({ calisanId: id, deletedAt: null })
         .sort({ createdAt: -1 })
         .toArray()
-      
+
       const enrichedZimmetler = await Promise.all(
         zimmetler.map(async (zimmet) => {
           const envanter = await db.collection('envanterler').findOne({ id: zimmet.envanterId })
@@ -568,6 +590,88 @@ async function handleRoute(request, { params }) {
 
       return handleCORS(NextResponse.json(enrichedZimmetler.map(({ _id, ...rest }) => rest)))
     }
+
+    if (route.startsWith('/calisanlar/') && route.endsWith('/belgeler') && method === 'GET') {
+      const id = route.split('/')[2]
+
+      const belgeler = await db.collection('calisan_belgeleri')
+        .find({ calisanId: id, deletedAt: null })
+        .sort({ createdAt: -1 })
+        .toArray()
+
+      return handleCORS(NextResponse.json(belgeler.map(({ _id, ...rest }) => rest)))
+    }
+
+    if (route.startsWith('/calisanlar/') && route.endsWith('/belgeler') && method === 'POST') {
+      const id = route.split('/')[2]
+      const body = await request.json()
+
+      if (!body.ad || !body.dosyaVerisi) {
+        return handleCORS(NextResponse.json(
+          { error: "Dosya adı ve veri zorunludur" },
+          { status: 400 }
+        ))
+      }
+
+      const belge = {
+        id: uuidv4(),
+        calisanId: id,
+        ad: body.ad,
+        tip: body.tip || 'file', // pdf, image, etc.
+        dosyaVerisi: body.dosyaVerisi, // Base64 content
+        yukleyenId: body.yukleyenId || 'system',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null
+      }
+
+      await db.collection('calisan_belgeleri').insertOne(belge)
+
+      // Audit log
+      await createAuditLog(
+        body.yukleyenId || 'system',
+        body.yukleyenAd || 'System',
+        'UPLOAD_DOCUMENT',
+        'Document',
+        belge.id,
+        { fileName: belge.ad, employeeId: id }
+      )
+
+      const { _id, ...result } = belge
+      return handleCORS(NextResponse.json(result))
+    }
+
+    if (route.startsWith('/calisanlar/belgeler/') && method === 'DELETE') {
+      const id = route.split('/')[3]
+      const body = await request.json().catch(() => ({}))
+
+      const existingBelge = await db.collection('calisan_belgeleri').findOne({ id, deletedAt: null })
+
+      const result = await db.collection('calisan_belgeleri').updateOne(
+        { id, deletedAt: null },
+        { $set: { deletedAt: new Date() } }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Belge bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'DELETE_DOCUMENT',
+        'Document',
+        id,
+        { fileName: existingBelge?.ad }
+      )
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
 
     if (route.startsWith('/calisanlar/') && route.endsWith('/reset-password') && method === 'POST') {
       const id = route.split('/')[2]
@@ -647,14 +751,14 @@ async function handleRoute(request, { params }) {
         .find({ deletedAt: null })
         .sort({ createdAt: -1 })
         .toArray()
-      
+
       // Add counts for each type
       const enrichedTipler = await Promise.all(
         tipler.map(async (tip) => {
           const envanterler = await db.collection('envanterler')
             .find({ envanterTipiId: tip.id, deletedAt: null })
             .toArray()
-          
+
           return {
             ...tip,
             toplamSayisi: envanterler.length,
@@ -670,7 +774,7 @@ async function handleRoute(request, { params }) {
 
     if (route === '/envanter-tipleri' && method === 'POST') {
       const body = await request.json()
-      
+
       if (!body.ad) {
         return handleCORS(NextResponse.json(
           { error: "Envanter tipi adı zorunludur" },
@@ -748,18 +852,18 @@ async function handleRoute(request, { params }) {
         .find({ deletedAt: null })
         .sort({ createdAt: -1 })
         .toArray()
-      
+
       const enrichedEnvanterler = await Promise.all(
         envanterler.map(async (envanter) => {
           const tip = await db.collection('envanter_tipleri').findOne({ id: envanter.envanterTipiId })
-          
+
           // Find active zimmet if any
-          const activeZimmet = await db.collection('zimmetler').findOne({ 
-            envanterId: envanter.id, 
+          const activeZimmet = await db.collection('zimmetler').findOne({
+            envanterId: envanter.id,
             durum: 'Aktif',
-            deletedAt: null 
+            deletedAt: null
           })
-          
+
           let zimmetBilgisi = null
           if (activeZimmet) {
             const calisan = await db.collection('calisanlar').findOne({ id: activeZimmet.calisanId })
@@ -782,7 +886,7 @@ async function handleRoute(request, { params }) {
 
     if (route === '/envanterler' && method === 'POST') {
       const body = await request.json()
-      
+
       if (!body.envanterTipiId || !body.marka || !body.model || !body.seriNumarasi) {
         return handleCORS(NextResponse.json(
           { error: "Envanter tipi, marka, model ve seri numarası zorunludur" },
@@ -791,9 +895,9 @@ async function handleRoute(request, { params }) {
       }
 
       // Check serial number uniqueness
-      const existing = await db.collection('envanterler').findOne({ 
-        seriNumarasi: body.seriNumarasi, 
-        deletedAt: null 
+      const existing = await db.collection('envanterler').findOne({
+        seriNumarasi: body.seriNumarasi,
+        deletedAt: null
       })
       if (existing) {
         return handleCORS(NextResponse.json(
@@ -816,7 +920,7 @@ async function handleRoute(request, { params }) {
       }
 
       await db.collection('envanterler').insertOne(envanter)
-      
+
       // Audit log
       await createAuditLog(
         body.userId || 'system',
@@ -824,15 +928,53 @@ async function handleRoute(request, { params }) {
         'CREATE_INVENTORY',
         'Inventory',
         envanter.id,
-        { 
-          marka: envanter.marka, 
-          model: envanter.model, 
-          seriNumarasi: envanter.seriNumarasi 
+        {
+          marka: envanter.marka,
+          model: envanter.model,
+          seriNumarasi: envanter.seriNumarasi
         }
       )
-      
+
       const { _id, ...result } = envanter
       return handleCORS(NextResponse.json(result))
+    }
+
+    if (route.startsWith('/envanterler/') && method === 'GET' && !route.endsWith('/accessories')) {
+      const id = route.split('/')[2]
+
+      const envanter = await db.collection('envanterler').findOne({ id, deletedAt: null })
+
+      if (!envanter) {
+        return handleCORS(NextResponse.json(
+          { error: "Envanter bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      // Envanter tipi
+      const tip = await db.collection('envanter_tipleri').findOne({ id: envanter.envanterTipiId })
+
+      // Active zimmet info
+      const activeZimmet = await db.collection('zimmetler').findOne({
+        envanterId: envanter.id,
+        durum: 'Aktif',
+        deletedAt: null
+      })
+
+      let zimmetBilgisi = null
+      if (activeZimmet) {
+        const calisan = await db.collection('calisanlar').findOne({ id: activeZimmet.calisanId })
+        zimmetBilgisi = {
+          calisanAd: calisan?.adSoyad || 'Bilinmiyor',
+          zimmetTarihi: activeZimmet.zimmetTarihi
+        }
+      }
+
+      return handleCORS(NextResponse.json({
+        ...envanter,
+        envanterTipiAd: tip?.ad || 'Bilinmiyor',
+        zimmetBilgisi
+      }))
     }
 
     if (route.startsWith('/envanterler/') && method === 'PUT') {
@@ -897,7 +1039,7 @@ async function handleRoute(request, { params }) {
       if (cleanBody.envanterTipiId && cleanBody.envanterTipiId !== currentEnvanter.envanterTipiId) {
         changedFields.envanterTipiId = { onceki: currentEnvanter.envanterTipiId, yeni: cleanBody.envanterTipiId }
       }
-      
+
       // Only log if there are actual changes
       if (Object.keys(changedFields).length > 0) {
         await createAuditLog(
@@ -958,7 +1100,7 @@ async function handleRoute(request, { params }) {
         'DELETE_INVENTORY',
         'Inventory',
         id,
-        { 
+        {
           marka: existingEnvanter?.marka,
           model: existingEnvanter?.model,
           seriNumarasi: existingEnvanter?.seriNumarasi
@@ -974,14 +1116,14 @@ async function handleRoute(request, { params }) {
         .find({ deletedAt: null })
         .sort({ createdAt: -1 })
         .toArray()
-      
+
       const enrichedZimmetler = await Promise.all(
         zimmetler.map(async (zimmet) => {
           const envanter = await db.collection('envanterler').findOne({ id: zimmet.envanterId })
           const calisan = await db.collection('calisanlar').findOne({ id: zimmet.calisanId })
           const departman = calisan ? await db.collection('departmanlar').findOne({ id: calisan.departmanId }) : null
           const tip = envanter ? await db.collection('envanter_tipleri').findOne({ id: envanter.envanterTipiId }) : null
-          
+
           // Get iade alan yetkili if exists
           let iadeAlanYetkili = null
           if (zimmet.iadeAlanYetkiliId) {
@@ -1014,7 +1156,7 @@ async function handleRoute(request, { params }) {
 
     if (route === '/zimmetler' && method === 'POST') {
       const body = await request.json()
-      
+
       if (!body.envanterId || !body.calisanId || !body.zimmetTarihi) {
         return handleCORS(NextResponse.json(
           { error: "Envanter, çalışan ve zimmet tarihi zorunludur" },
@@ -1068,7 +1210,7 @@ async function handleRoute(request, { params }) {
         'CREATE_ZIMMET',
         'Zimmet',
         zimmet.id,
-        { 
+        {
           employee: calisan?.adSoyad,
           inventoryInfo: `${envanter?.marka} ${envanter?.model}`,
           seriNumarasi: envanter?.seriNumarasi
@@ -1082,7 +1224,7 @@ async function handleRoute(request, { params }) {
     // İade endpoint
     if (route === '/zimmetler/iade' && method === 'POST') {
       const body = await request.json()
-      
+
       if (!body.zimmetId || !body.iadeTarihi || !body.envanterDurumu || !body.iadeAlanYetkiliId) {
         return handleCORS(NextResponse.json(
           { error: "Zimmet ID, iade tarihi, envanter durumu ve yetkili ID zorunludur" },
@@ -1091,9 +1233,9 @@ async function handleRoute(request, { params }) {
       }
 
       // Yetkili kontrolü - must be manager or admin
-      const yetkili = await db.collection('calisanlar').findOne({ 
-        id: body.iadeAlanYetkiliId, 
-        deletedAt: null 
+      const yetkili = await db.collection('calisanlar').findOne({
+        id: body.iadeAlanYetkiliId,
+        deletedAt: null
       })
 
       if (!yetkili) {
@@ -1110,9 +1252,9 @@ async function handleRoute(request, { params }) {
         ))
       }
 
-      const zimmet = await db.collection('zimmetler').findOne({ 
-        id: body.zimmetId, 
-        deletedAt: null 
+      const zimmet = await db.collection('zimmetler').findOne({
+        id: body.zimmetId,
+        deletedAt: null
       })
 
       if (!zimmet) {
@@ -1125,13 +1267,13 @@ async function handleRoute(request, { params }) {
       // Update zimmet
       await db.collection('zimmetler').updateOne(
         { id: body.zimmetId },
-        { 
-          $set: { 
+        {
+          $set: {
             iadeTarihi: new Date(body.iadeTarihi),
             iadeAlanYetkiliId: body.iadeAlanYetkiliId,
             durum: 'İade Edildi',
             updatedAt: new Date()
-          } 
+          }
         }
       )
 
@@ -1149,7 +1291,7 @@ async function handleRoute(request, { params }) {
         'RETURN_ZIMMET',
         'Zimmet',
         body.zimmetId,
-        { 
+        {
           employee: calisan?.adSoyad,
           inventoryId: zimmet.envanterId,
           returnDate: body.iadeTarihi,
@@ -1227,34 +1369,34 @@ async function handleRoute(request, { params }) {
 
       // Seed Zimmetler
       const zimmetler = [
-        { 
-          id: uuidv4(), 
-          envanterId: envanterler[0].id, 
-          calisanId: calisanlar[0].id, 
-          zimmetTarihi: new Date('2024-01-15'), 
-          iadeTarihi: null, 
-          durum: 'Aktif', 
-          aciklama: '', 
-          createdAt: new Date(), 
-          updatedAt: new Date(), 
-          deletedAt: null 
+        {
+          id: uuidv4(),
+          envanterId: envanterler[0].id,
+          calisanId: calisanlar[0].id,
+          zimmetTarihi: new Date('2024-01-15'),
+          iadeTarihi: null,
+          durum: 'Aktif',
+          aciklama: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null
         },
-        { 
-          id: uuidv4(), 
-          envanterId: envanterler[2].id, 
-          calisanId: calisanlar[1].id, 
-          zimmetTarihi: new Date('2024-02-10'), 
-          iadeTarihi: null, 
-          durum: 'Aktif', 
-          aciklama: '', 
-          createdAt: new Date(), 
-          updatedAt: new Date(), 
-          deletedAt: null 
+        {
+          id: uuidv4(),
+          envanterId: envanterler[2].id,
+          calisanId: calisanlar[1].id,
+          zimmetTarihi: new Date('2024-02-10'),
+          iadeTarihi: null,
+          durum: 'Aktif',
+          aciklama: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null
         }
       ]
       await db.collection('zimmetler').insertMany(zimmetler)
 
-      return handleCORS(NextResponse.json({ 
+      return handleCORS(NextResponse.json({
         message: "Örnek veriler başarıyla oluşturuldu",
         counts: {
           departmanlar: departmanlar.length,
@@ -1268,7 +1410,7 @@ async function handleRoute(request, { params }) {
 
     // ============= AUDIT LOGS =============
     if (route === '/audit-logs' && method === 'GET') {
-      const { actorUserId, actionType, entityType, startDate, endDate, page = 1, limit = 50 } = 
+      const { actorUserId, actionType, entityType, startDate, endDate, page = 1, limit = 50 } =
         Object.fromEntries(new URL(request.url).searchParams)
 
       const query = {}
@@ -1282,7 +1424,7 @@ async function handleRoute(request, { params }) {
       }
 
       const skip = (parseInt(page) - 1) * parseInt(limit)
-      
+
       const logs = await db.collection('audit_logs')
         .find(query)
         .sort({ createdAt: -1 })
@@ -1306,7 +1448,7 @@ async function handleRoute(request, { params }) {
     // ============= ACCESSORIES =============
     if (route.startsWith('/envanterler/') && route.endsWith('/accessories') && method === 'GET') {
       const inventoryId = route.split('/')[2]
-      
+
       const accessories = await db.collection('inventory_accessories')
         .find({ inventoryId, deletedAt: null })
         .sort({ createdAt: -1 })
@@ -1663,7 +1805,7 @@ async function handleRoute(request, { params }) {
 
       // Get current dijital varlik for comparison
       const currentDijitalVarlik = await db.collection('dijital_varliklar').findOne({ id, deletedAt: null })
-      
+
       const { userId, userName, ...updateFields } = body
 
       const updateData = {
@@ -1708,14 +1850,14 @@ async function handleRoute(request, { params }) {
       if (updateFields.envanterId !== undefined && updateFields.envanterId !== currentDijitalVarlik?.envanterId) {
         changedFields.envanterId = { onceki: currentDijitalVarlik?.envanterId, yeni: updateFields.envanterId }
       }
-      
+
       await createAuditLog(
         userId || 'system',
         userName || 'System',
         'UPDATE_DIGITAL_ASSET',
         'DigitalAsset',
         id,
-        { 
+        {
           assetName: currentDijitalVarlik?.ad,
           degisiklikler: changedFields
         }
@@ -1835,7 +1977,7 @@ async function handleRoute(request, { params }) {
   } catch (error) {
     console.error('API Error:', error)
     return handleCORS(NextResponse.json(
-      { error: "Internal server error", details: error.message }, 
+      { error: "Internal server error", details: error.message },
       { status: 500 }
     ))
   }

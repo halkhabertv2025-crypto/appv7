@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus, Package, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus, Package, ChevronDown, ChevronRight, QrCode } from 'lucide-react'
+import QRCode from 'qrcode'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
@@ -50,6 +51,9 @@ const Envanterler = ({ user }) => {
     seriNumarasi: '',
     durum: 'Depoda'
   })
+  const [showQrDialog, setShowQrDialog] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
+  const [selectedEnvanterForQr, setSelectedEnvanterForQr] = useState(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -63,7 +67,7 @@ const Envanterler = ({ user }) => {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(env => 
+      filtered = filtered.filter(env =>
         env.marka.toLowerCase().includes(searchTerm.toLowerCase()) ||
         env.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
         env.seriNumarasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -132,7 +136,7 @@ const Envanterler = ({ user }) => {
   const toggleRow = async (envanterId) => {
     const newExpanded = { ...expandedRows, [envanterId]: !expandedRows[envanterId] }
     setExpandedRows(newExpanded)
-    
+
     if (newExpanded[envanterId] && !aksesuarlar[envanterId]) {
       await fetchAksesuarlar(envanterId)
     }
@@ -163,12 +167,12 @@ const Envanterler = ({ user }) => {
 
   const handleAksesuarSubmit = async (e) => {
     e.preventDefault()
-    
+
     try {
       const url = editingAksesuar
         ? `/api/envanterler/${selectedEnvanterForAksesuar.id}/accessories/${editingAksesuar.id}`
         : `/api/envanterler/${selectedEnvanterForAksesuar.id}/accessories`
-      
+
       const response = await fetch(url, {
         method: editingAksesuar ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,11 +186,11 @@ const Envanterler = ({ user }) => {
         return
       }
 
-      toast({ 
-        title: 'Başarılı', 
-        description: editingAksesuar ? 'Aksesuar güncellendi' : 'Aksesuar eklendi' 
+      toast({
+        title: 'Başarılı',
+        description: editingAksesuar ? 'Aksesuar güncellendi' : 'Aksesuar eklendi'
       })
-      
+
       setShowAksesuarDialog(false)
       fetchAksesuarlar(selectedEnvanterForAksesuar.id)
     } catch (error) {
@@ -216,7 +220,7 @@ const Envanterler = ({ user }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     // Eğer düzenleme modundaysa ve durum "Zimmetli" olarak değiştirilmişse
     if (editingEnvanter && formData.durum === 'Zimmetli' && editingEnvanter.durum !== 'Zimmetli') {
       // Zimmet dialog'unu aç
@@ -230,16 +234,16 @@ const Envanterler = ({ user }) => {
       setShowZimmetDialog(true)
       return
     }
-    
+
     try {
-      const url = editingEnvanter 
+      const url = editingEnvanter
         ? `/api/envanterler/${editingEnvanter.id}`
         : '/api/envanterler'
-      
+
       // Audit log için eski ve yeni durumu kaydet
       const oldDurum = editingEnvanter?.durum
       const newDurum = formData.durum
-      
+
       const response = await fetch(url, {
         method: editingEnvanter ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -260,11 +264,11 @@ const Envanterler = ({ user }) => {
         return
       }
 
-      toast({ 
-        title: 'Başarılı', 
-        description: editingEnvanter ? 'Envanter güncellendi' : 'Envanter oluşturuldu' 
+      toast({
+        title: 'Başarılı',
+        description: editingEnvanter ? 'Envanter güncellendi' : 'Envanter oluşturuldu'
       })
-      
+
       setShowDialog(false)
       setFormData({
         envanterTipiId: '',
@@ -284,12 +288,12 @@ const Envanterler = ({ user }) => {
   // Zimmet oluşturma
   const handleZimmetSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!zimmetFormData.calisanId) {
       toast({ title: 'Hata', description: 'Lütfen bir çalışan seçin', variant: 'destructive' })
       return
     }
-    
+
     try {
       const response = await fetch('/api/zimmetler', {
         method: 'POST',
@@ -312,7 +316,7 @@ const Envanterler = ({ user }) => {
       }
 
       toast({ title: 'Başarılı', description: 'Envanter zimmetlendi' })
-      
+
       setShowZimmetDialog(false)
       setSelectedEnvanterForZimmet(null)
       setZimmetFormData({
@@ -325,6 +329,83 @@ const Envanterler = ({ user }) => {
     } catch (error) {
       toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
     }
+  }
+
+
+
+  const handleQrCode = async (envanter) => {
+    setSelectedEnvanterForQr(envanter)
+    try {
+      const url = `${window.location.origin}/zimmet-dogrula/${envanter.id}`
+      const qrDataUrl = await QRCode.toDataURL(url, { width: 200, margin: 1 })
+      setQrCodeUrl(qrDataUrl)
+      setShowQrDialog(true)
+    } catch (err) {
+      console.error(err)
+      toast({ title: 'Hata', description: 'QR Kod oluşturulamadı', variant: 'destructive' })
+    }
+  }
+
+  const handlePrintQr = () => {
+    const printWindow = window.open('', '', 'width=600,height=600')
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>QR Kod Etiketi</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              display: flex; 
+              justify-content: center; 
+              align-items: center; 
+              height: 100vh; 
+              margin: 0; 
+            }
+            .label-container {
+              text-align: center;
+              border: 2px solid #000;
+              padding: 20px;
+              width: 300px;
+            }
+            .header {
+              font-weight: bold;
+              font-size: 18px;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 5px;
+            }
+            .qr-image {
+              margin: 10px 0;
+            }
+            .info {
+              font-size: 14px;
+              margin-top: 10px;
+              text-align: left;
+            }
+            .info div {
+              margin-bottom: 5px;
+            }
+            .label {
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="label-container">
+            <div class="header">Halk Tv Envanter</div>
+            <img src="${qrCodeUrl}" class="qr-image" width="150" height="150" />
+            <div class="info">
+              <div><span class="label">Envanter Adı:</span> ${selectedEnvanterForQr.envanterTipiAd} ${selectedEnvanterForQr.marka} ${selectedEnvanterForQr.model}</div>
+              <div><span class="label">Envanterin Seri Numarası:</span> ${selectedEnvanterForQr.seriNumarasi}</div>
+            </div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
   }
 
   const handleDelete = async (id) => {
@@ -487,7 +568,7 @@ const Envanterler = ({ user }) => {
                     <>
                       <tr key={envanter.id} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-2">
-                          <button 
+                          <button
                             onClick={() => toggleRow(envanter.id)}
                             className="p-1 hover:bg-gray-200 rounded"
                           >
@@ -512,30 +593,38 @@ const Envanterler = ({ user }) => {
                           {envanter.zimmetBilgisi?.calisanAd || '-'}
                         </td>
                         <td className="py-3 px-4 text-sm">
-                          {envanter.zimmetBilgisi?.zimmetTarihi 
+                          {envanter.zimmetBilgisi?.zimmetTarihi
                             ? new Date(envanter.zimmetBilgisi.zimmetTarihi).toLocaleDateString('tr-TR')
                             : '-'
                           }
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex justify-end space-x-2">
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => openAksesuarDialog(envanter)}
                               title="Aksesuar Ekle"
                             >
                               <Package size={16} />
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => openEditDialog(envanter)}
                             >
                               <Pencil size={16} />
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleQrCode(envanter)}
+                              title="QR Kod Oluştur"
+                            >
+                              <QrCode size={16} />
+                            </Button>
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => handleDelete(envanter.id)}
                             >
@@ -551,8 +640,8 @@ const Envanterler = ({ user }) => {
                             <div className="ml-6 p-3 bg-white rounded-lg border">
                               <div className="flex justify-between items-center mb-2">
                                 <h4 className="font-medium text-sm text-gray-700">Aksesuarlar</h4>
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   variant="outline"
                                   onClick={() => openAksesuarDialog(envanter)}
                                   className="h-7 text-xs"
@@ -592,13 +681,13 @@ const Envanterler = ({ user }) => {
                                         </td>
                                         <td className="py-1 px-2 text-right">
                                           <div className="flex justify-end gap-1">
-                                            <button 
+                                            <button
                                               onClick={() => openAksesuarDialog(envanter, aks)}
                                               className="p-1 hover:bg-gray-100 rounded"
                                             >
                                               <Pencil size={14} />
                                             </button>
-                                            <button 
+                                            <button
                                               onClick={() => handleAksesuarDelete(envanter.id, aks.id)}
                                               className="p-1 hover:bg-red-100 rounded text-red-600"
                                             >
@@ -640,8 +729,8 @@ const Envanterler = ({ user }) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <Label htmlFor="envanterTipiId">Envanter Tipi *</Label>
-                <Select 
-                  value={formData.envanterTipiId} 
+                <Select
+                  value={formData.envanterTipiId}
                   onValueChange={(value) => setFormData({ ...formData, envanterTipiId: value })}
                   required
                 >
@@ -684,8 +773,8 @@ const Envanterler = ({ user }) => {
               </div>
               <div>
                 <Label htmlFor="durum">Durum</Label>
-                <Select 
-                  value={formData.durum} 
+                <Select
+                  value={formData.durum}
                   onValueChange={(value) => setFormData({ ...formData, durum: value })}
                   disabled={editingEnvanter?.durum === 'Zimmetli'}
                 >
@@ -755,8 +844,8 @@ const Envanterler = ({ user }) => {
               )}
               <div>
                 <Label htmlFor="calisanId">Zimmetlenecek Çalışan *</Label>
-                <Select 
-                  value={zimmetFormData.calisanId} 
+                <Select
+                  value={zimmetFormData.calisanId}
                   onValueChange={(value) => setZimmetFormData({ ...zimmetFormData, calisanId: value })}
                   required
                 >
@@ -808,6 +897,42 @@ const Envanterler = ({ user }) => {
         </DialogContent>
       </Dialog>
 
+      {/* QR Kod Dialog */}
+      <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>QR Kod Etiketi</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-white" id="qr-label">
+            <h3 className="font-bold text-lg mb-2 border-b w-full text-center pb-2">Halk Tv Envanter</h3>
+            {qrCodeUrl && (
+              <img src={qrCodeUrl} alt="QR Code" width={200} height={200} className="mb-4" />
+            )}
+            <div className="w-full text-left space-y-2 text-sm">
+              <div>
+                <span className="font-bold block text-gray-700">Envanter Adı:</span>
+                <span className="break-words">
+                  {selectedEnvanterForQr && `${selectedEnvanterForQr.envanterTipiAd} ${selectedEnvanterForQr.marka} ${selectedEnvanterForQr.model}`}
+                </span>
+              </div>
+              <div>
+                <span className="font-bold block text-gray-700">Envanterin Seri Numarası:</span>
+                <span className="font-mono">
+                  {selectedEnvanterForQr?.seriNumarasi}
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowQrDialog(false)}>
+              Kapat
+            </Button>
+            <Button onClick={handlePrintQr} className="bg-teal-500 hover:bg-teal-600">
+              Yazdır
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Aksesuar Dialog */}
       <Dialog open={showAksesuarDialog} onOpenChange={setShowAksesuarDialog}>
         <DialogContent className="max-w-md">

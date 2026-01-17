@@ -12,6 +12,7 @@ const Dashboard = () => {
     arizali: 0
   })
   const [recentZimmetler, setRecentZimmetler] = useState([])
+  const [recentLogins, setRecentLogins] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -24,6 +25,7 @@ const Dashboard = () => {
       const data = await response.json()
       setStats(data.stats)
       setRecentZimmetler(data.recentZimmetler)
+      setRecentLogins(data.recentLogins || [])
     } catch (error) {
       console.error('Dashboard verileri alınamadı:', error)
     } finally {
@@ -73,7 +75,7 @@ const Dashboard = () => {
         {statCards.map((stat, index) => {
           const Icon = stat.icon
           const percentage = stats.total > 0 ? Math.round((stat.value / stats.total) * 100) : 0
-          
+
           return (
             <Card key={index} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
@@ -88,7 +90,7 @@ const Dashboard = () => {
                 </div>
                 <div className="text-sm font-medium text-gray-600">{stat.title}</div>
                 <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className={`h-full ${stat.color.replace('text-', 'bg-')}`}
                     style={{ width: `${percentage}%` }}
                   />
@@ -159,9 +161,8 @@ const Dashboard = () => {
                         {new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')}
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          zimmet.durum === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${zimmet.durum === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
                           {zimmet.durum}
                         </span>
                       </td>
@@ -188,6 +189,40 @@ const Dashboard = () => {
               <div className="text-sm text-gray-500">Yeni İşe Alım - Bugün</div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Son Login Olanlar</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentLogins.length === 0 ? (
+            <div className="text-center py-4 text-gray-500 text-sm">
+              Henüz login kaydı yok
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentLogins.map((login, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center font-semibold text-xs">
+                      {login.userName.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">{login.userName}</div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(login.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(login.timestamp).toLocaleDateString('tr-TR')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
