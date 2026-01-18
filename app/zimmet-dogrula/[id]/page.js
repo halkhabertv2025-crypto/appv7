@@ -76,7 +76,7 @@ export default function ZimmetDogrula({ params }) {
                             </div>
                             <div className="text-2xl font-bold text-teal-600 mt-2">
                                 {envanter.zimmetBilgisi?.calisanAd
-                                    ? `${envanter.zimmetBilgisi.calisanAd} Kişisine Zimmetlidir`
+                                    ? `${envanter.zimmetBilgisi.calisanAd} Kişisine ait zimmetli cihazlar`
                                     : 'Şu an kimseye zimmetli değildir (Depoda)'
                                 }
                             </div>

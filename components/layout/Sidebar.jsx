@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
 const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
   const [envanterOpen, setEnvanterOpen] = useState(true)
@@ -74,9 +75,16 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
         isOpen ? "w-64 translate-x-0" : "w-0 md:w-20 -translate-x-full md:translate-x-0"
       )}>
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          {(isOpen || window.innerWidth >= 768) && (
-            <div className="flex items-center space-x-2">
-              <span className="text-xl font-bold tracking-wider">HALK TV</span>
+          {(isOpen || (typeof window !== 'undefined' && window.innerWidth >= 768)) && (
+            <div className="flex items-center justify-start w-full pl-2">
+              <Image
+                src="/logo-white.svg"
+                alt="Halk TV Logo"
+                width={120}
+                height={40}
+                className="h-8 w-auto object-contain"
+                priority
+              />
             </div>
           )}
           <button

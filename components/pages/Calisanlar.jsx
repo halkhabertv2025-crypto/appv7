@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Pencil, Trash2, Search, Key, Shield, Eye } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Key, Shield, Eye, QrCode } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Checkbox } from '@/components/ui/checkbox'
 import CalisanDetay from './CalisanDetay'
+import QRCode from 'qrcode'
 
 const Calisanlar = ({ user }) => {
   const [calisanlar, setCalisanlar] = useState([])
@@ -24,6 +25,10 @@ const Calisanlar = ({ user }) => {
   const [selectedCalisan, setSelectedCalisan] = useState(null)
   const [detayCalisan, setDetayCalisan] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showQrDialog, setShowQrDialog] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
+  const [selectedZimmetForQr, setSelectedZimmetForQr] = useState(null)
+  const [selectedCalisanForQr, setSelectedCalisanForQr] = useState(null)
   const [yeniSifre, setYeniSifre] = useState('')
   const [formData, setFormData] = useState({
     adSoyad: '',
@@ -42,7 +47,7 @@ const Calisanlar = ({ user }) => {
   }, [])
 
   useEffect(() => {
-    const filtered = calisanlar.filter(cal => 
+    const filtered = calisanlar.filter(cal =>
       cal.adSoyad.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cal.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cal.departmanAd.toLowerCase().includes(searchTerm.toLowerCase())
@@ -75,12 +80,12 @@ const Calisanlar = ({ user }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     try {
-      const url = editingCalisan 
+      const url = editingCalisan
         ? `/api/calisanlar/${editingCalisan.id}`
         : '/api/calisanlar'
-      
+
       const response = await fetch(url, {
         method: editingCalisan ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,11 +103,11 @@ const Calisanlar = ({ user }) => {
         return
       }
 
-      toast({ 
-        title: 'Başarılı', 
-        description: editingCalisan ? 'Çalışan güncellendi' : 'Çalışan oluşturuldu' 
+      toast({
+        title: 'Başarılı',
+        description: editingCalisan ? 'Çalışan güncellendi' : 'Çalışan oluşturuldu'
       })
-      
+
       setShowDialog(false)
       setFormData({ adSoyad: '', email: '', telefon: '', departmanId: '', durum: 'Aktif', yoneticiYetkisi: false, adminYetkisi: false })
       setEditingCalisan(null)
@@ -197,6 +202,83 @@ const Calisanlar = ({ user }) => {
     setShowDialog(true)
   }
 
+  const handleQrCode = async (calisan) => {
+    try {
+      setSelectedCalisanForQr(calisan)
+
+      const url = `${window.location.origin}/calisan-dogrula/${calisan.id}`
+      const qrDataUrl = await QRCode.toDataURL(url, { width: 200, margin: 1 })
+      setQrCodeUrl(qrDataUrl)
+      setShowQrDialog(true)
+
+    } catch (err) {
+      console.error(err)
+      toast({ title: 'Hata', description: 'QR Kod oluşturulamadı', variant: 'destructive' })
+    }
+  }
+
+  const handlePrintQr = () => {
+    const printWindow = window.open('', '', 'width=600,height=600')
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>QR Kod Etiketi</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              display: flex; 
+              justify-content: center; 
+              align-items: center; 
+              height: 100vh; 
+              margin: 0; 
+            }
+            .label-container {
+              text-align: center;
+              border: 2px solid #000;
+              padding: 20px;
+              width: 300px;
+            }
+            .header {
+              font-weight: bold;
+              font-size: 18px;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 5px;
+            }
+            .qr-image {
+              margin: 10px 0;
+            }
+            .info {
+              font-size: 14px;
+              margin-top: 10px;
+              text-align: left;
+            }
+            .info div {
+              margin-bottom: 5px;
+            }
+            .label {
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="label-container">
+            <div class="header">Halk Tv İnsan Kaynakları</div>
+            <img src="${qrCodeUrl}" class="qr-image" width="150" height="150" />
+            <div class="info">
+              <div><span class="label">Çalışanlar Bilgileri:</span> ${selectedCalisanForQr?.adSoyad}</div>
+              <div><span class="label">Departman:</span> ${selectedCalisanForQr?.departmanAd}</div>
+            </div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
   const openCreateDialog = () => {
     setEditingCalisan(null)
     setFormData({ adSoyad: '', email: '', telefon: '', departmanId: '', durum: 'Aktif', yoneticiYetkisi: false, adminYetkisi: false })
@@ -279,25 +361,33 @@ const Calisanlar = ({ user }) => {
                         )}
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          calisan.durum === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${calisan.durum === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
                           {calisan.durum}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex justify-end space-x-2">
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => openDetayPanel(calisan)}
                             title="Detayları Görüntüle"
                           >
                             <Eye size={16} />
                           </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleQrCode(calisan)}
+                            title="QR Kod Oluştur"
+                            disabled={!calisan.zimmetliMi}
+                          >
+                            <QrCode size={16} />
+                          </Button>
                           {user?.adminYetkisi && (
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => openPasswordDialog(calisan)}
                               title="Şifre Sıfırla"
@@ -305,15 +395,15 @@ const Calisanlar = ({ user }) => {
                               <Key size={16} />
                             </Button>
                           )}
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => openEditDialog(calisan)}
                           >
                             <Pencil size={16} />
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handleDelete(calisan.id)}
                           >
@@ -370,8 +460,8 @@ const Calisanlar = ({ user }) => {
               </div>
               <div>
                 <Label htmlFor="departmanId">Departman *</Label>
-                <Select 
-                  value={formData.departmanId} 
+                <Select
+                  value={formData.departmanId}
                   onValueChange={(value) => setFormData({ ...formData, departmanId: value })}
                   required
                 >
@@ -387,8 +477,8 @@ const Calisanlar = ({ user }) => {
               </div>
               <div>
                 <Label htmlFor="durum">Durum</Label>
-                <Select 
-                  value={formData.durum} 
+                <Select
+                  value={formData.durum}
                   onValueChange={(value) => setFormData({ ...formData, durum: value })}
                 >
                   <SelectTrigger>
@@ -401,7 +491,7 @@ const Calisanlar = ({ user }) => {
                 </Select>
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox 
+                <Checkbox
                   id="yoneticiYetkisi"
                   checked={formData.yoneticiYetkisi}
                   onCheckedChange={(checked) => setFormData({ ...formData, yoneticiYetkisi: checked })}
@@ -412,7 +502,7 @@ const Calisanlar = ({ user }) => {
               </div>
               {user?.adminYetkisi && (
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
+                  <Checkbox
                     id="adminYetkisi"
                     checked={formData.adminYetkisi}
                     onCheckedChange={(checked) => setFormData({ ...formData, adminYetkisi: checked })}
@@ -459,14 +549,14 @@ const Calisanlar = ({ user }) => {
                 />
               </div>
               <div className="flex justify-end space-x-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setShowPasswordDialog(false)}
                 >
                   İptal
                 </Button>
-                <Button 
+                <Button
                   onClick={handleResetPassword}
                   className="bg-teal-500 hover:bg-teal-600"
                 >
@@ -480,12 +570,49 @@ const Calisanlar = ({ user }) => {
 
       {/* Çalışan Detay Panel */}
       {showDetayPanel && detayCalisan && (
-        <CalisanDetay 
-          calisan={detayCalisan} 
+        <CalisanDetay
+          calisan={detayCalisan}
           onClose={closeDetayPanel}
           user={user}
         />
       )}
+
+      {/* QR Kod Dialog */}
+      <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>QR Kod Etiketi</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-white" id="qr-label">
+            <h3 className="font-bold text-lg mb-2 border-b w-full text-center pb-2">Halk Tv İnsan Kaynakları</h3>
+            {qrCodeUrl && (
+              <img src={qrCodeUrl} alt="QR Code" width={200} height={200} className="mb-4" />
+            )}
+            <div className="w-full text-left space-y-2 text-sm">
+              <div>
+                <span className="font-bold block text-gray-700">Çalışanlar Bilgileri:</span>
+                <span className="break-words">
+                  {selectedCalisanForQr?.adSoyad}
+                </span>
+              </div>
+              <div>
+                <span className="font-bold block text-gray-700">Departman:</span>
+                <span className="font-mono">
+                  {selectedCalisanForQr?.departmanAd}
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowQrDialog(false)}>
+              Kapat
+            </Button>
+            <Button onClick={handlePrintQr} className="bg-teal-500 hover:bg-teal-600">
+              Yazdır
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

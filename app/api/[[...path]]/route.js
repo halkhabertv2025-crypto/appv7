@@ -462,6 +462,27 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(result))
     }
 
+    if (route.match(/\/calisanlar\/[^/]+$/) && method === 'GET') {
+      const id = route.split('/')[2]
+      const calisan = await db.collection('calisanlar').findOne({ id, deletedAt: null })
+
+      if (!calisan) {
+        return handleCORS(NextResponse.json(
+          { error: "Çalışan bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      const departman = await db.collection('departmanlar').findOne({ id: calisan.departmanId })
+      const enrichedCalisan = {
+        ...calisan,
+        departmanAd: departman?.ad || 'Bilinmiyor'
+      }
+
+      const { _id, ...rest } = enrichedCalisan
+      return handleCORS(NextResponse.json(rest))
+    }
+
     if (route.startsWith('/calisanlar/') && method === 'PUT') {
       const id = route.split('/')[2]
       const body = await request.json()
