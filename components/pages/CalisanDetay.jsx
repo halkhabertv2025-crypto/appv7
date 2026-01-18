@@ -12,7 +12,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import jsPDF from 'jspdf'
+
 import autoTable from 'jspdf-autotable'
+import { QrCode } from 'lucide-react'
+import QRCode from 'qrcode'
 
 const CalisanDetay = ({ calisan, onClose, user }) => {
   const [activeTab, setActiveTab] = useState('zimmetler')
@@ -21,6 +24,9 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
   const [loading, setLoading] = useState(true)
   const [showZimmetDialog, setShowZimmetDialog] = useState(false)
   const [showDokumanDialog, setShowDokumanDialog] = useState(false)
+  const [showQrDialog, setShowQrDialog] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
+  const [selectedZimmetForQr, setSelectedZimmetForQr] = useState(null)
   const [selectedFile, setSelectedFile] = useState(null)
   const [zimmetFormData, setZimmetFormData] = useState({
     envanterId: '',
@@ -430,6 +436,81 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
     toast({ title: 'Başarılı', description: 'Zimmet tutanağı PDF olarak indirildi' })
   }
 
+  const handleQrCode = async (zimmet) => {
+    setSelectedZimmetForQr(zimmet)
+    try {
+      const url = `${window.location.origin}/zimmet-dogrula/${zimmet.envanterId}`
+      const qrDataUrl = await QRCode.toDataURL(url, { width: 200, margin: 1 })
+      setQrCodeUrl(qrDataUrl)
+      setShowQrDialog(true)
+    } catch (err) {
+      console.error(err)
+      toast({ title: 'Hata', description: 'QR Kod oluşturulamadı', variant: 'destructive' })
+    }
+  }
+
+  const handlePrintQr = () => {
+    const printWindow = window.open('', '', 'width=600,height=600')
+    printWindow.document.write(`
+        <html>
+          <head>
+            <title>QR Kod Etiketi</title>
+            <style>
+              body { 
+                font-family: Arial, sans-serif; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                height: 100vh; 
+                margin: 0; 
+              }
+              .label-container {
+                text-align: center;
+                border: 2px solid #000;
+                padding: 20px;
+                width: 300px;
+              }
+              .header {
+                font-weight: bold;
+                font-size: 18px;
+                margin-bottom: 10px;
+                border-bottom: 1px solid #ccc;
+                padding-bottom: 5px;
+              }
+              .qr-image {
+                margin: 10px 0;
+              }
+              .info {
+                font-size: 14px;
+                margin-top: 10px;
+                text-align: left;
+              }
+              .info div {
+                margin-bottom: 5px;
+              }
+              .label {
+                font-weight: bold;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="label-container">
+              <div class="header">Halk Tv IK</div>
+              <img src="${qrCodeUrl}" class="qr-image" width="150" height="150" />
+              <div class="info">
+                <div><span class="label">Çalışanlar Bilgileri:</span> ${calisan.adSoyad}</div>
+                <div><span class="label">Envanterin Seri Numarası:</span> ${selectedZimmetForQr.envanterBilgisi?.seriNumarasi}</div>
+              </div>
+            </div>
+            <script>
+              window.onload = function() { window.print(); window.close(); }
+            </script>
+          </body>
+        </html>
+      `)
+    printWindow.document.close()
+  }
+
   if (!calisan) return null
 
   return (
@@ -627,6 +708,15 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
                           >
                             <FileText size={16} />
                           </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="ml-2"
+                            onClick={() => handleQrCode(zimmet)}
+                            title="QR Kod Oluştur"
+                          >
+                            <QrCode size={16} />
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -804,7 +894,43 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
         </DialogContent>
       </Dialog>
 
-    </div >
+      {/* QR Kod Dialog */}
+      <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>QR Kod Etiketi</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-white" id="qr-label">
+            <h3 className="font-bold text-lg mb-2 border-b w-full text-center pb-2">Halk Tv IK</h3>
+            {qrCodeUrl && (
+              <img src={qrCodeUrl} alt="QR Code" width={200} height={200} className="mb-4" />
+            )}
+            <div className="w-full text-left space-y-2 text-sm">
+              <div>
+                <span className="font-bold block text-gray-700">Çalışanlar Bilgileri:</span>
+                <span className="break-words">
+                  {calisan.adSoyad}
+                </span>
+              </div>
+              <div>
+                <span className="font-bold block text-gray-700">Envanterin Seri Numarası:</span>
+                <span className="font-mono">
+                  {selectedZimmetForQr?.envanterBilgisi?.seriNumarasi}
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowQrDialog(false)}>
+              Kapat
+            </Button>
+            <Button onClick={handlePrintQr} className="bg-teal-500 hover:bg-teal-600">
+              Yazdır
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }
 
