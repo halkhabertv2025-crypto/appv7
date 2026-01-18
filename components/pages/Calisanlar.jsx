@@ -36,10 +36,22 @@ const Calisanlar = ({ user }) => {
     telefon: '',
     departmanId: '',
     durum: 'Aktif',
+    calisanYetkisi: false,
     yoneticiYetkisi: false,
-    adminYetkisi: false
+    adminYetkisi: false,
+    sifre: '',
+    iseGirisTarihi: new Date().toISOString().split('T')[0]
   })
   const { toast } = useToast()
+
+  // Password validation function
+  const validatePassword = (password) => {
+    if (password.length < 8) return 'Şifre en az 8 karakter olmalıdır'
+    if (!/[A-Z]/.test(password)) return 'Şifre en az bir büyük harf içermelidir'
+    if (!/[0-9]/.test(password)) return 'Şifre en az bir rakam içermelidir'
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return 'Şifre en az bir özel karakter içermelidir (!@#$%^&*(),.?":{}|<>)'
+    return null
+  }
 
   useEffect(() => {
     fetchCalisanlar()
@@ -81,6 +93,15 @@ const Calisanlar = ({ user }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    // Validate password for new employees
+    if (!editingCalisan && formData.sifre) {
+      const passwordError = validatePassword(formData.sifre)
+      if (passwordError) {
+        toast({ title: 'Hata', description: passwordError, variant: 'destructive' })
+        return
+      }
+    }
+
     try {
       const url = editingCalisan
         ? `/api/calisanlar/${editingCalisan.id}`
@@ -109,7 +130,7 @@ const Calisanlar = ({ user }) => {
       })
 
       setShowDialog(false)
-      setFormData({ adSoyad: '', email: '', telefon: '', departmanId: '', durum: 'Aktif', yoneticiYetkisi: false, adminYetkisi: false })
+      setFormData({ adSoyad: '', email: '', telefon: '', departmanId: '', durum: 'Aktif', calisanYetkisi: false, yoneticiYetkisi: false, adminYetkisi: false, sifre: '', iseGirisTarihi: new Date().toISOString().split('T')[0] })
       setEditingCalisan(null)
       fetchCalisanlar()
     } catch (error) {
@@ -625,28 +646,69 @@ const Calisanlar = ({ user }) => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="yoneticiYetkisi"
-                  checked={formData.yoneticiYetkisi}
-                  onCheckedChange={(checked) => setFormData({ ...formData, yoneticiYetkisi: checked })}
-                />
-                <Label htmlFor="yoneticiYetkisi" className="text-sm font-normal cursor-pointer">
-                  Yönetici Yetkisi (Zimmet iadesi alabilir)
-                </Label>
-              </div>
-              {user?.adminYetkisi && (
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="adminYetkisi"
-                    checked={formData.adminYetkisi}
-                    onCheckedChange={(checked) => setFormData({ ...formData, adminYetkisi: checked })}
-                  />
-                  <Label htmlFor="adminYetkisi" className="text-sm font-normal cursor-pointer">
-                    Admin Yetkisi (Yönetici atayabilir, şifre sıfırlayabilir)
-                  </Label>
-                </div>
+              {!editingCalisan && (
+                <>
+                  <div>
+                    <Label htmlFor="sifre">Şifre *</Label>
+                    <Input
+                      id="sifre"
+                      type="password"
+                      value={formData.sifre}
+                      onChange={(e) => setFormData({ ...formData, sifre: e.target.value })}
+                      placeholder="Min 8 karakter, büyük harf, rakam, özel karakter"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">En az 8 karakter, 1 büyük harf, 1 rakam, 1 özel karakter</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="iseGirisTarihi">İşe Giriş Tarihi *</Label>
+                    <Input
+                      id="iseGirisTarihi"
+                      type="date"
+                      value={formData.iseGirisTarihi}
+                      onChange={(e) => setFormData({ ...formData, iseGirisTarihi: e.target.value })}
+                      required
+                    />
+                  </div>
+                </>
               )}
+              <div className="border-t pt-4 mt-4">
+                <Label className="text-sm font-medium mb-3 block">Yetkiler</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="calisanYetkisi"
+                      checked={formData.calisanYetkisi}
+                      onCheckedChange={(checked) => setFormData({ ...formData, calisanYetkisi: checked })}
+                    />
+                    <Label htmlFor="calisanYetkisi" className="text-sm font-normal cursor-pointer">
+                      Çalışan Yetkisi (Login olabilir, kısıtlı erişim)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="yoneticiYetkisi"
+                      checked={formData.yoneticiYetkisi}
+                      onCheckedChange={(checked) => setFormData({ ...formData, yoneticiYetkisi: checked })}
+                    />
+                    <Label htmlFor="yoneticiYetkisi" className="text-sm font-normal cursor-pointer">
+                      Yönetici Yetkisi (Zimmet iadesi alabilir)
+                    </Label>
+                  </div>
+                  {user?.adminYetkisi && (
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="adminYetkisi"
+                        checked={formData.adminYetkisi}
+                        onCheckedChange={(checked) => setFormData({ ...formData, adminYetkisi: checked })}
+                      />
+                      <Label htmlFor="adminYetkisi" className="text-sm font-normal cursor-pointer">
+                        Admin Yetkisi (Yönetici atayabilir, şifre sıfırlayabilir)
+                      </Label>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>

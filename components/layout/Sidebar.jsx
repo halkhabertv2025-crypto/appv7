@@ -14,29 +14,37 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 
-const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
+const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen, user }) => {
   const [envanterOpen, setEnvanterOpen] = useState(true)
 
-  const menuItems = [
+  // Full access for yönetici or admin, limited for çalışan yetkisi
+  const hasFullAccess = user?.yoneticiYetkisi || user?.adminYetkisi
+  const hasLimitedAccess = user?.calisanYetkisi && !hasFullAccess
+
+  const allMenuItems = [
     {
       id: 'dashboard',
       label: 'Anasayfa',
-      icon: Home
+      icon: Home,
+      requiresPermission: false
     },
     {
       id: 'benim-sayfam',
       label: 'Benim Sayfam',
-      icon: User
+      icon: User,
+      requiresPermission: false
     },
     {
       id: 'calisanlar',
       label: 'Çalışanlar',
-      icon: Users
+      icon: Users,
+      requiresPermission: true
     },
     {
       id: 'departmanlar',
       label: 'Departmanlar',
-      icon: Building2
+      icon: Building2,
+      requiresPermission: false
     },
     {
       id: 'envanter-zimmet',
@@ -45,6 +53,7 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
       isDropdown: true,
       open: envanterOpen,
       setOpen: setEnvanterOpen,
+      requiresPermission: true,
       children: [
         { id: 'envanterler', label: 'Envanterler' },
         { id: 'envanter-tipleri', label: 'Envanter Tipleri' },
@@ -55,9 +64,15 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen }) => {
     {
       id: 'ayarlar',
       label: 'Ayarlar',
-      icon: Settings
+      icon: Settings,
+      requiresPermission: true
     }
   ]
+
+  // Filter menu items based on user permissions
+  const menuItems = hasFullAccess
+    ? allMenuItems
+    : allMenuItems.filter(item => !item.requiresPermission)
 
   return (
     <>

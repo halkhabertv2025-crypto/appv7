@@ -68,7 +68,7 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-800">Anasayfa</h2>
-        <p className="text-gray-500">Merhaba Adem, Bugün Apple'da ilk günün</p>
+        <p className="text-gray-500">Merhaba, Halk TV'ye hoş geldiniz</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

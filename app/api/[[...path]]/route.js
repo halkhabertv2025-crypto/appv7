@@ -103,13 +103,7 @@ async function handleRoute(request, { params }) {
         ))
       }
 
-      // Check if user has manager or admin permission
-      if (!calisan.yoneticiYetkisi && !calisan.adminYetkisi) {
-        return handleCORS(NextResponse.json(
-          { error: "Bu sisteme giriş yapmak için yönetici veya admin yetkisi gereklidir" },
-          { status: 403 }
-        ))
-      }
+      // All active employees can now login
 
       // Get department name
       const departman = await db.collection('departmanlar').findOne({ id: calisan.departmanId })

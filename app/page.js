@@ -62,6 +62,7 @@ export default function App() {
         setCurrentPage={setCurrentPage}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
+        user={user}
       />
       <div className="flex-1 flex flex-col overflow-hidden w-full">
         <Header
@@ -71,7 +72,7 @@ export default function App() {
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 w-full">
           {currentPage === 'dashboard' && <Dashboard />}
-          {currentPage === 'benim-sayfam' && <BeninSayfam />}
+          {currentPage === 'benim-sayfam' && <BeninSayfam user={user} />}
           {currentPage === 'calisanlar' && <Calisanlar user={user} />}
           {currentPage === 'departmanlar' && <Departmanlar user={user} />}
           {currentPage === 'envanterler' && <Envanterler user={user} />}
