@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Pencil, Trash2, Search, Key, Shield, Eye, QrCode } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Key, Shield, Eye, QrCode, Printer } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Checkbox } from '@/components/ui/checkbox'
 import CalisanDetay from './CalisanDetay'
@@ -279,6 +279,118 @@ const Calisanlar = ({ user }) => {
     printWindow.document.close()
   }
 
+  // Batch Selection Logic
+  const [selectedCalisanIds, setSelectedCalisanIds] = useState(new Set())
+
+  const toggleSelectAll = () => {
+    if (selectedCalisanIds.size === filteredCalisanlar.length) {
+      setSelectedCalisanIds(new Set())
+    } else {
+      setSelectedCalisanIds(new Set(filteredCalisanlar.map(c => c.id)))
+    }
+  }
+
+  const toggleSelect = (id) => {
+    const newSelected = new Set(selectedCalisanIds)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedCalisanIds(newSelected)
+  }
+
+  const handleBatchPrintQr = async () => {
+    if (selectedCalisanIds.size === 0) {
+      toast({ title: 'Hata', description: 'Lütfen en az bir çalışan seçin', variant: 'destructive' })
+      return
+    }
+
+    const selectedCalisanlar = filteredCalisanlar.filter(c => selectedCalisanIds.has(c.id))
+
+    // Generate QR codes for all
+    const qrData = await Promise.all(selectedCalisanlar.map(async (calisan) => {
+      const url = `${window.location.origin}/calisan-dogrula/${calisan.id}`
+      const qrDataUrl = await QRCode.toDataURL(url, { width: 150, margin: 1 })
+      return { ...calisan, qrDataUrl }
+    }))
+
+    const printWindow = window.open('', '', 'width=800,height=800')
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Toplu QR Etiketleri</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0; 
+              padding: 20px;
+              display: flex;
+              flex-wrap: wrap;
+              gap: 10px;
+            }
+            .label-container {
+              text-align: center;
+              border: 1px solid #ccc;
+              padding: 10px;
+              width: 300px;
+              height: auto;
+              page-break-inside: avoid;
+              box-sizing: border-box;
+              margin-bottom: 20px;
+            }
+            .header {
+              font-weight: bold;
+              font-size: 16px;
+              margin-bottom: 8px;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 4px;
+            }
+            .qr-image {
+              margin: 5px 0;
+            }
+            .info {
+              font-size: 12px;
+              margin-top: 5px;
+              text-align: left;
+            }
+            .info div {
+              margin-bottom: 3px;
+            }
+            .label {
+              font-weight: bold;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .label-container {
+                border: 1px dotted #ccc; /* Optional border for print */
+                box-shadow: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${qrData.map(data => `
+            <div class="label-container">
+              <div class="header">Halk Tv İnsan Kaynakları</div>
+              <img src="${data.qrDataUrl}" class="qr-image" width="120" height="120" />
+              <div class="info">
+                <div><span class="label">Çalışan:</span> ${data.adSoyad}</div>
+                <div><span class="label">Departman:</span> ${data.departmanAd}</div>
+              </div>
+            </div>
+          `).join('')}
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
   const openCreateDialog = () => {
     setEditingCalisan(null)
     setFormData({ adSoyad: '', email: '', telefon: '', departmanId: '', durum: 'Aktif', yoneticiYetkisi: false, adminYetkisi: false })
@@ -316,9 +428,26 @@ const Calisanlar = ({ user }) => {
             <div className="text-center py-8">Yükleniyor...</div>
           ) : (
             <div className="overflow-x-auto">
+              <div className="mb-2 flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBatchPrintQr}
+                  disabled={selectedCalisanIds.size === 0}
+                >
+                  <Printer className="mr-2" size={16} />
+                  Seçilenleri Yazdır ({selectedCalisanIds.size})
+                </Button>
+              </div>
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    <th className="py-3 px-4 w-10">
+                      <Checkbox
+                        checked={filteredCalisanlar.length > 0 && selectedCalisanIds.size === filteredCalisanlar.length}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Ad Soyad</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Email</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Telefon</th>
@@ -331,6 +460,12 @@ const Calisanlar = ({ user }) => {
                 <tbody>
                   {filteredCalisanlar.map((calisan) => (
                     <tr key={calisan.id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <Checkbox
+                          checked={selectedCalisanIds.has(calisan.id)}
+                          onCheckedChange={() => toggleSelect(calisan.id)}
+                        />
+                      </td>
                       <td className="py-3 px-4 text-sm font-medium">
                         <div className="flex items-center gap-2">
                           <span className={calisan.zimmetliMi ? 'text-red-600 font-semibold' : ''}>

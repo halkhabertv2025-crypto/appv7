@@ -29,7 +29,7 @@ export default function CalisanDogrula({ params }) {
             const zimmetData = await zimmetRes.json()
 
             setCalisan(calisanData)
-            setZimmetler(zimmetData.filter(z => z.durum === 'Aktif')) // Only show active assignments
+            setZimmetler(zimmetData) // Removed filter to show all history
         } catch (err) {
             setError(err.message)
         } finally {
@@ -57,6 +57,24 @@ export default function CalisanDogrula({ params }) {
         )
     }
 
+    const activeZimmetler = zimmetler.filter(z => z.durum === 'Aktif')
+    const activeCount = activeZimmetler.length
+    const hasHistory = zimmetler.length > 0
+
+    let statusText = ''
+    let statusClass = ''
+
+    if (activeCount > 0) {
+        statusText = `${activeCount} Adet Zimmetli Cihaz`
+        statusClass = 'text-red-600 text-2xl font-bold'
+    } else if (hasHistory) {
+        statusText = 'Zimmetler Teslim Alınmıştır'
+        statusClass = 'text-green-600 text-xl font-bold'
+    } else {
+        statusText = 'Zimmet Kaydı Yoktur'
+        statusClass = 'text-black text-xl font-bold'
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 p-4 flex flex-col items-center">
             <Card className="w-full max-w-2xl shadow-lg mt-8">
@@ -75,8 +93,8 @@ export default function CalisanDogrula({ params }) {
                         <div>
                             <h2 className="text-xl font-bold text-gray-800">{calisan.adSoyad}</h2>
                             <div className="text-gray-500 text-sm mt-1">{calisan.departmanAd}</div>
-                            <div className="text-teal-600 font-medium text-sm mt-2">
-                                {zimmetler.length > 0 ? `${zimmetler.length} Adet Zimmetli Cihaz` : 'Zimmetli Cihaz Bulunmamaktadır'}
+                            <div className={`mt-2 ${statusClass}`}>
+                                {statusText}
                             </div>
                         </div>
                     </div>
@@ -90,13 +108,22 @@ export default function CalisanDogrula({ params }) {
                             </h3>
                             <div className="space-y-3">
                                 {zimmetler.map((zimmet) => (
-                                    <div key={zimmet.id} className="border border-gray-100 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                                    <div
+                                        key={zimmet.id}
+                                        className={`border rounded-lg p-4 transition-colors ${zimmet.durum === 'Aktif'
+                                                ? 'border-gray-200 bg-white'
+                                                : 'border-gray-100 bg-gray-50 opacity-75'
+                                            }`}
+                                    >
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <div className="font-medium text-gray-900">
+                                                <div className={`font-medium ${zimmet.durum === 'Aktif' ? 'text-gray-900' : 'text-gray-400'
+                                                    }`}>
                                                     {zimmet.envanterBilgisi?.tip || 'Bilinmiyor'}
+                                                    {zimmet.durum !== 'Aktif' && ' (İade Edildi)'}
                                                 </div>
-                                                <div className="text-sm text-gray-500">
+                                                <div className={`text-sm ${zimmet.durum === 'Aktif' ? 'text-gray-500' : 'text-gray-400'
+                                                    }`}>
                                                     {zimmet.envanterBilgisi?.marka} {zimmet.envanterBilgisi?.model}
                                                 </div>
                                             </div>

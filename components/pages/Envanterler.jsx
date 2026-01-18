@@ -8,10 +8,11 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus, Package, ChevronDown, ChevronRight, QrCode } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus, Package, ChevronDown, ChevronRight, QrCode, Printer } from 'lucide-react'
 import QRCode from 'qrcode'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const Envanterler = ({ user }) => {
   const [envanterler, setEnvanterler] = useState([])
@@ -333,6 +334,119 @@ const Envanterler = ({ user }) => {
 
 
 
+  // Batch Selection Logic
+  const [selectedEnvanterIds, setSelectedEnvanterIds] = useState(new Set())
+
+  const toggleSelectAll = () => {
+    if (selectedEnvanterIds.size === filteredEnvanterler.length) {
+      setSelectedEnvanterIds(new Set())
+    } else {
+      setSelectedEnvanterIds(new Set(filteredEnvanterler.map(e => e.id)))
+    }
+  }
+
+  const toggleSelect = (id) => {
+    const newSelected = new Set(selectedEnvanterIds)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedEnvanterIds(newSelected)
+  }
+
+  const handleBatchPrintQr = async () => {
+    if (selectedEnvanterIds.size === 0) {
+      toast({ title: 'Hata', description: 'Lütfen en az bir envanter seçin', variant: 'destructive' })
+      return
+    }
+
+    const selectedEnvanterler = filteredEnvanterler.filter(e => selectedEnvanterIds.has(e.id))
+
+    // Generate QR codes for all
+    const qrData = await Promise.all(selectedEnvanterler.map(async (envanter) => {
+      const url = `${window.location.origin}/zimmet-dogrula/${envanter.id}`
+      const qrDataUrl = await QRCode.toDataURL(url, { width: 150, margin: 1 })
+      return { ...envanter, qrDataUrl }
+    }))
+
+    const printWindow = window.open('', '', 'width=800,height=800')
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Toplu QR Etiketleri</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0; 
+              padding: 20px;
+              display: flex;
+              flex-wrap: wrap;
+              gap: 10px;
+            }
+            .label-container {
+              text-align: center;
+              border: 1px solid #ccc;
+              padding: 10px;
+              width: 300px;
+              height: auto;
+              page-break-inside: avoid;
+              box-sizing: border-box;
+              margin-bottom: 20px;
+            }
+            .header {
+              font-weight: bold;
+              font-size: 16px;
+              margin-bottom: 8px;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 4px;
+            }
+            .qr-image {
+              margin: 5px 0;
+            }
+            .info {
+              font-size: 12px;
+              margin-top: 5px;
+              text-align: left;
+            }
+            .info div {
+              margin-bottom: 3px;
+            }
+            .label {
+              font-weight: bold;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .label-container {
+                border: 1px dotted #ccc;
+                box-shadow: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${qrData.map(data => `
+            <div class="label-container">
+              <div class="header">Halk Tv Envanter</div>
+              <img src="${data.qrDataUrl}" class="qr-image" width="120" height="120" />
+              <div class="info">
+                <div><span class="label">Envanter Adı:</span> ${data.envanterTipiAd} ${data.marka} ${data.model}</div>
+                <div><span class="label">Envanterin Seri Numarası:</span> ${data.seriNumarasi}</div>
+              </div>
+            </div>
+          `).join('')}
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
+
   const handleQrCode = async (envanter) => {
     setSelectedEnvanterForQr(envanter)
     try {
@@ -549,9 +663,26 @@ const Envanterler = ({ user }) => {
             <div className="text-center py-8">Yükleniyor...</div>
           ) : (
             <div className="overflow-x-auto">
+              <div className="mb-2 flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBatchPrintQr}
+                  disabled={selectedEnvanterIds.size === 0}
+                >
+                  <Printer className="mr-2" size={16} />
+                  Seçilenleri Yazdır ({selectedEnvanterIds.size})
+                </Button>
+              </div>
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    <th className="py-3 px-4 w-10">
+                      <Checkbox
+                        checked={filteredEnvanterler.length > 0 && selectedEnvanterIds.size === filteredEnvanterler.length}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </th>
                     <th className="w-8"></th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Envanter Tipi</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Marka</th>
@@ -567,6 +698,12 @@ const Envanterler = ({ user }) => {
                   {filteredEnvanterler.map((envanter) => (
                     <>
                       <tr key={envanter.id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <Checkbox
+                            checked={selectedEnvanterIds.has(envanter.id)}
+                            onCheckedChange={() => toggleSelect(envanter.id)}
+                          />
+                        </td>
                         <td className="py-3 px-2">
                           <button
                             onClick={() => toggleRow(envanter.id)}
