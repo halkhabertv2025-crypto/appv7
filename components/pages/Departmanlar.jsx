@@ -22,13 +22,16 @@ const Departmanlar = ({ user }) => {
   const [formData, setFormData] = useState({ ad: '', aciklama: '' })
   const { toast } = useToast()
 
+  // Check if user has full access (not just çalışan yetkisi)
+  const hasFullAccess = user?.yoneticiYetkisi || user?.adminYetkisi
+
   useEffect(() => {
     fetchDepartmanlar()
     fetchCalisanlar()
   }, [])
 
   useEffect(() => {
-    const filtered = departmanlar.filter(dep => 
+    const filtered = departmanlar.filter(dep =>
       dep.ad.toLowerCase().includes(searchTerm.toLowerCase()) ||
       dep.aciklama.toLowerCase().includes(searchTerm.toLowerCase())
     )
@@ -68,12 +71,12 @@ const Departmanlar = ({ user }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     try {
-      const url = editingDepartman 
+      const url = editingDepartman
         ? `/api/departmanlar/${editingDepartman.id}`
         : '/api/departmanlar'
-      
+
       const response = await fetch(url, {
         method: editingDepartman ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,11 +94,11 @@ const Departmanlar = ({ user }) => {
         return
       }
 
-      toast({ 
-        title: 'Başarılı', 
-        description: editingDepartman ? 'Departman güncellendi' : 'Departman oluşturuldu' 
+      toast({
+        title: 'Başarılı',
+        description: editingDepartman ? 'Departman güncellendi' : 'Departman oluşturuldu'
       })
-      
+
       setShowDialog(false)
       setFormData({ ad: '', aciklama: '' })
       setEditingDepartman(null)
@@ -149,10 +152,12 @@ const Departmanlar = ({ user }) => {
           <h2 className="text-2xl font-bold text-gray-800">Departmanlar</h2>
           <p className="text-gray-500">Departman listesi ve yönetimi</p>
         </div>
-        <Button onClick={openCreateDialog} className="bg-teal-500 hover:bg-teal-600">
-          <Plus size={20} className="mr-2" />
-          Yeni Departman Oluştur
-        </Button>
+        {hasFullAccess && (
+          <Button onClick={openCreateDialog} className="bg-teal-500 hover:bg-teal-600">
+            <Plus size={20} className="mr-2" />
+            Yeni Departman Oluştur
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -187,7 +192,7 @@ const Departmanlar = ({ user }) => {
                   {filteredDepartmanlar.map((departman) => {
                     const deptCalisanlar = getCalisanlarByDept(departman.id)
                     const isExpanded = expandedDepts[departman.id]
-                    
+
                     return (
                       <React.Fragment key={departman.id}>
                         <tr className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => toggleDept(departman.id)}>
@@ -204,24 +209,27 @@ const Departmanlar = ({ user }) => {
                             </span>
                           </td>
                           <td className="py-3 px-4 text-sm text-gray-600">{departman.aciklama || '-'}</td>
-                          <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-end space-x-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => openEditDialog(departman)}
-                              >
-                                <Pencil size={16} />
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleDelete(departman.id)}
-                              >
-                                <Trash2 size={16} />
-                              </Button>
-                            </div>
-                          </td>
+                          {hasFullAccess && (
+                            <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex justify-end space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openEditDialog(departman)}
+                                >
+                                  <Pencil size={16} />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDelete(departman.id)}
+                                >
+                                  <Trash2 size={16} />
+                                </Button>
+                              </div>
+                            </td>
+                          )}
+                          {!hasFullAccess && <td className="py-3 px-4"></td>}
                         </tr>
                         {isExpanded && deptCalisanlar.length > 0 && (
                           <tr>

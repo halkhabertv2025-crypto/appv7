@@ -71,8 +71,8 @@ export default function App() {
           onMenuClick={() => setSidebarOpen(true)}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 w-full">
-          {currentPage === 'dashboard' && <Dashboard />}
-          {currentPage === 'benim-sayfam' && <BeninSayfam user={user} />}
+          {currentPage === 'dashboard' && <Dashboard user={user} />}
+          {currentPage === 'benim-sayfam' && <BeninSayfam user={user} setUser={setUser} />}
           {currentPage === 'calisanlar' && <Calisanlar user={user} />}
           {currentPage === 'departmanlar' && <Departmanlar user={user} />}
           {currentPage === 'envanterler' && <Envanterler user={user} />}

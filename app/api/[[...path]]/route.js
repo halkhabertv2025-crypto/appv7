@@ -114,8 +114,10 @@ async function handleRoute(request, { params }) {
         email: calisan.email,
         departmanId: calisan.departmanId,
         departmanAd: departman?.ad || 'Bilinmiyor',
-        yoneticiYetkisi: calisan.yoneticiYetkisi,
-        adminYetkisi: calisan.adminYetkisi,
+        calisanYetkisi: calisan.calisanYetkisi || false,
+        yoneticiYetkisi: calisan.yoneticiYetkisi || false,
+        adminYetkisi: calisan.adminYetkisi || false,
+        sifreDegistirildi: calisan.sifreDegistirildi || false,
         token: uuidv4() // Simple token for session
       }
 
@@ -431,9 +433,12 @@ async function handleRoute(request, { params }) {
         telefon: body.telefon || '',
         departmanId: body.departmanId,
         durum: body.durum || 'Aktif',
+        calisanYetkisi: body.calisanYetkisi || false,
         yoneticiYetkisi: body.yoneticiYetkisi || false,
         adminYetkisi: body.adminYetkisi || false,
-        sifre: body.sifre || '123456', // Default password
+        iseGirisTarihi: body.iseGirisTarihi || new Date().toISOString().split('T')[0],
+        sifre: body.sifre || 'Halktv123!', // Default password with complexity if not provided
+        sifreDegistirildi: false,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null
@@ -573,6 +578,50 @@ async function handleRoute(request, { params }) {
           employeeName: existingCalisan?.adSoyad,
           degisiklikler: changedFields
         }
+      )
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
+    if (route.startsWith('/calisanlar/') && route.endsWith('/change-password') && method === 'POST') {
+      const parts = route.split('/')
+      const id = parts[2]
+      const body = await request.json()
+
+      if (!body.currentPassword || !body.newPassword) {
+        return handleCORS(NextResponse.json(
+          { error: "Mevcut şifre ve yeni şifre zorunludur" },
+          { status: 400 }
+        ))
+      }
+
+      const calisan = await db.collection('calisanlar').findOne({ id, deletedAt: null })
+      if (!calisan) {
+        return handleCORS(NextResponse.json({ error: "Çalışan bulunamadı" }, { status: 404 }))
+      }
+
+      if (calisan.sifre !== body.currentPassword) {
+        return handleCORS(NextResponse.json({ error: "Mevcut şifreniz hatalı" }, { status: 401 }))
+      }
+
+      await db.collection('calisanlar').updateOne(
+        { id },
+        {
+          $set: {
+            sifre: body.newPassword,
+            sifreDegistirildi: true,
+            updatedAt: new Date()
+          }
+        }
+      )
+
+      await createAuditLog(
+        id,
+        calisan.adSoyad,
+        'PASSWORD_CHANGE',
+        'Employee',
+        id,
+        { email: calisan.email }
       )
 
       return handleCORS(NextResponse.json({ success: true }))

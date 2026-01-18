@@ -6,13 +6,18 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { User, Briefcase, Package, DollarSign, MapPin, Phone, FileText, File, Download, Camera } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
-const BeninSayfam = ({ user }) => {
+const BeninSayfam = ({ user, setUser }) => {
   const [activeTab, setActiveTab] = useState('temel-bilgiler')
   const [zimmetler, setZimmetler] = useState([])
   const [evraklar, setEvraklar] = useState([])
   const [loading, setLoading] = useState(true)
   const [profileImage, setProfileImage] = useState(null)
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const fileInputRef = useRef(null)
   const { toast } = useToast()
 
@@ -23,6 +28,11 @@ const BeninSayfam = ({ user }) => {
       const savedImage = localStorage.getItem(`profileImage_${user.id}`)
       if (savedImage) {
         setProfileImage(savedImage)
+      }
+
+      // Force password change on first login
+      if (user.sifreDegistirildi === false) {
+        setShowPasswordDialog(true)
       }
     }
   }, [user])
@@ -66,6 +76,53 @@ const BeninSayfam = ({ user }) => {
         toast({ title: 'Başarılı', description: 'Profil resmi güncellendi' })
       }
       reader.readAsDataURL(file)
+    }
+  }
+
+  const handlePasswordChange = async () => {
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      toast({ title: 'Hata', description: 'Lütfen tüm alanları doldurun', variant: 'destructive' })
+      return
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({ title: 'Hata', description: 'Yeni şifreler eşleşmiyor', variant: 'destructive' })
+      return
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      toast({ title: 'Hata', description: 'Şifre en az 8 karakter olmalıdır', variant: 'destructive' })
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/calisanlar/${user.id}/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast({ title: 'Hata', description: data.error || 'Şifre değiştirilemedi', variant: 'destructive' })
+        return
+      }
+
+      toast({ title: 'Başarılı', description: 'Şifreniz başarıyla değiştirildi' })
+
+      // Update global user state
+      const updatedUser = { ...user, sifreDegistirildi: true }
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+      if (setUser) setUser(updatedUser)
+
+      setShowPasswordDialog(false)
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    } catch (error) {
+      toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
     }
   }
 
@@ -120,7 +177,11 @@ const BeninSayfam = ({ user }) => {
             </div>
             <h3 className="text-xl font-bold mb-2">{userInfo.ad} {userInfo.soyad}</h3>
             <p className="text-sm text-gray-600 mb-4">E-Posta: {userInfo.isEposta}</p>
-            <Button variant="outline" className="w-full text-teal-600 border-teal-600">
+            <Button
+              variant="outline"
+              className="w-full text-teal-600 border-teal-600"
+              onClick={() => setShowPasswordDialog(true)}
+            >
               Şifre Değiştir
             </Button>
           </CardContent>
@@ -340,6 +401,7 @@ const BeninSayfam = ({ user }) => {
                           </div>
                           <a
                             href={evrak.dosyaUrl}
+                            download={evrak.dosyaAdi}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center text-teal-600 hover:text-teal-700"
@@ -357,6 +419,79 @@ const BeninSayfam = ({ user }) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Şifre Değiştirme Dialog */}
+      <Dialog
+        open={showPasswordDialog}
+        onOpenChange={(open) => {
+          // If password is not changed yet, don't allow closing the dialog
+          if (user?.sifreDegistirildi === false) return
+          setShowPasswordDialog(open)
+        }}
+      >
+        <DialogContent onPointerDownOutside={(e) => {
+          if (user?.sifreDegistirildi === false) e.preventDefault()
+        }} onEscapeKeyDown={(e) => {
+          if (user?.sifreDegistirildi === false) e.preventDefault()
+        }}>
+          <DialogHeader>
+            <DialogTitle>
+              {user?.sifreDegistirildi === false ? 'Şifrenizi Güncelleyin' : 'Şifre Değiştir'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {user?.sifreDegistirildi === false && (
+              <div className="p-3 bg-blue-50 text-blue-700 text-sm rounded-lg border border-blue-100">
+                Sisteme ilk girişinizde güvenliğiniz için şifrenizi değiştirmeniz gerekmektedir.
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Mevcut Şifre</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={passwordData.currentPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                placeholder="Mevcut şifrenizi giriniz"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">Yeni Şifre</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={passwordData.newPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                placeholder="Yeni şifrenizi giriniz"
+              />
+              <p className="text-xs text-gray-500">En az 8 karakter olmalıdır.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Yeni Şifre (Tekrar)</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={passwordData.confirmPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                placeholder="Yeni şifrenizi tekrar giriniz"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            {user?.sifreDegistirildi !== false && (
+              <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>
+                İptal
+              </Button>
+            )}
+            <Button
+              className="bg-teal-500 hover:bg-teal-600"
+              onClick={handlePasswordChange}
+            >
+              Şifreyi Güncelle
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

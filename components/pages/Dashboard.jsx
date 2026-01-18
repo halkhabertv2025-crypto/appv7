@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Package, PackageCheck, PackageMinus, PackageX, TrendingUp } from 'lucide-react'
 
-const Dashboard = () => {
+const Dashboard = ({ user }) => {
   const [stats, setStats] = useState({
     total: 0,
     zimmetli: 0,
@@ -15,9 +15,16 @@ const Dashboard = () => {
   const [recentLogins, setRecentLogins] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // Check if user has only çalışan yetkisi (limited access)
+  const hasLimitedAccess = user?.calisanYetkisi && !user?.yoneticiYetkisi && !user?.adminYetkisi
+
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    if (!hasLimitedAccess) {
+      fetchDashboardData()
+    } else {
+      setLoading(false)
+    }
+  }, [hasLimitedAccess])
 
   const fetchDashboardData = async () => {
     try {
@@ -31,6 +38,19 @@ const Dashboard = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Simplified dashboard for çalışan yetkisi users
+  if (hasLimitedAccess) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-16">
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Hoş Geldiniz, {user?.adSoyad}</h2>
+          <p className="text-xl text-gray-600 mb-2">Halk TV İnsan Kaynakları Sistemi</p>
+          <p className="text-lg text-teal-600 font-medium">Görevinizde başarılar dileriz!</p>
+        </div>
+      </div>
+    )
   }
 
   const statCards = [

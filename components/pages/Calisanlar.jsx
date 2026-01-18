@@ -217,6 +217,7 @@ const Calisanlar = ({ user }) => {
       telefon: calisan.telefon,
       departmanId: calisan.departmanId,
       durum: calisan.durum,
+      calisanYetkisi: calisan.calisanYetkisi || false,
       yoneticiYetkisi: calisan.yoneticiYetkisi || false,
       adminYetkisi: calisan.adminYetkisi || false
     })
