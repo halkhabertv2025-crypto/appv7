@@ -1,6 +1,7 @@
 import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
 import { NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 
 // MongoDB connection
 let client
@@ -89,11 +90,37 @@ async function handleRoute(request, { params }) {
         ))
       }
 
-      if (calisan.sifre !== body.sifre) {
+      // Password verification logic (incl. lazy migration)
+      let passwordMatch = false
+      let needsMigration = false
+
+      // 1. Try bcrypt compare (for hashed passwords)
+      try {
+        passwordMatch = await bcrypt.compare(body.sifre, calisan.sifre)
+      } catch (e) {
+        // Not a valid hash, likely plaintext
+      }
+
+      // 2. Fallback: Try plaintext compare (for legacy passwords)
+      if (!passwordMatch && calisan.sifre === body.sifre) {
+        passwordMatch = true
+        needsMigration = true
+      }
+
+      if (!passwordMatch) {
         return handleCORS(NextResponse.json(
           { error: "Email veya şifre hatalı" },
           { status: 401 }
         ))
+      }
+
+      // 3. Lazy Migration: If it was plaintext, hash and update now
+      if (needsMigration) {
+        const hashedPassword = await bcrypt.hash(body.sifre, 10)
+        await db.collection('calisanlar').updateOne(
+          { id: calisan.id },
+          { $set: { sifre: hashedPassword } }
+        )
       }
 
       if (calisan.durum !== 'Aktif') {
@@ -437,7 +464,7 @@ async function handleRoute(request, { params }) {
         yoneticiYetkisi: body.yoneticiYetkisi || false,
         adminYetkisi: body.adminYetkisi || false,
         iseGirisTarihi: body.iseGirisTarihi || new Date().toISOString().split('T')[0],
-        sifre: body.sifre || 'Halktv123!', // Default password with complexity if not provided
+        sifre: await bcrypt.hash(body.sifre || 'Halktv123!', 10), // Hash initial password
         sifreDegistirildi: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -600,15 +627,27 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: "Çalışan bulunamadı" }, { status: 404 }))
       }
 
-      if (calisan.sifre !== body.currentPassword) {
+      // Verify current password (support both hash and plain for transition)
+      let currentMatch = false
+      try {
+        currentMatch = await bcrypt.compare(body.currentPassword, calisan.sifre)
+      } catch (e) { }
+
+      if (!currentMatch && calisan.sifre === body.currentPassword) {
+        currentMatch = true
+      }
+
+      if (!currentMatch) {
         return handleCORS(NextResponse.json({ error: "Mevcut şifreniz hatalı" }, { status: 401 }))
       }
+
+      const newHashedPassword = await bcrypt.hash(body.newPassword, 10)
 
       await db.collection('calisanlar').updateOne(
         { id },
         {
           $set: {
-            sifre: body.newPassword,
+            sifre: newHashedPassword,
             sifreDegistirildi: true,
             updatedAt: new Date()
           }

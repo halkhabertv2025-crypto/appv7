@@ -27,29 +27,29 @@ const Login = ({ onLogin }) => {
       const data = await response.json()
 
       if (!response.ok) {
-        toast({ 
-          title: 'Hata', 
-          description: data.error || 'Giriş başarısız', 
-          variant: 'destructive' 
+        toast({
+          title: 'Hata',
+          description: data.error || 'Giriş başarısız',
+          variant: 'destructive'
         })
         return
       }
 
       // Save user data to localStorage
       localStorage.setItem('user', JSON.stringify(data))
-      
-      toast({ 
-        title: 'Başarılı', 
-        description: `Hoş geldiniz, ${data.adSoyad}!` 
+
+      toast({
+        title: 'Başarılı',
+        description: `Hoş geldiniz, ${data.adSoyad}!`
       })
 
       // Call parent function to update state
       onLogin(data)
     } catch (error) {
-      toast({ 
-        title: 'Hata', 
-        description: 'Bir hata oluştu', 
-        variant: 'destructive' 
+      toast({
+        title: 'Hata',
+        description: 'Bir hata oluştu',
+        variant: 'destructive'
       })
     } finally {
       setLoading(false)
@@ -91,8 +91,8 @@ const Login = ({ onLogin }) => {
                 required
               />
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-teal-500 hover:bg-teal-600"
               disabled={loading}
             >
@@ -105,14 +105,7 @@ const Login = ({ onLogin }) => {
             </Button>
           </form>
 
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-600 font-semibold mb-2">Test Hesapları:</p>
-            <div className="space-y-1 text-xs text-gray-500">
-              <div><strong>Admin:</strong> admin@halktv.com.tr / admin123</div>
-              <div><strong>Yönetici:</strong> ahmet@example.com / 123456</div>
-              <div><strong>Yönetici:</strong> ayse@example.com / 123456</div>
-            </div>
-          </div>
+
         </CardContent>
       </Card>
     </div>
