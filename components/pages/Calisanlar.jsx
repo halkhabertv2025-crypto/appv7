@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, Pencil, Trash2, Search, Key, Shield, Eye, QrCode, Printer } from 'lucide-react'
+import { toTitleCase } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Checkbox } from '@/components/ui/checkbox'
 import CalisanDetay from './CalisanDetay'
@@ -594,7 +595,7 @@ const Calisanlar = ({ user }) => {
                 <Input
                   id="adSoyad"
                   value={formData.adSoyad}
-                  onChange={(e) => setFormData({ ...formData, adSoyad: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, adSoyad: toTitleCase(e.target.value) })}
                   required
                 />
               </div>

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea'
 import { Plus, Pencil, Trash2, Search, ChevronDown, ChevronRight, Package } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
+import { cn, toTitleCase } from '@/lib/utils'
 
 const EnvanterTipleri = () => {
   const [tipler, setTipler] = useState([])
@@ -28,7 +28,7 @@ const EnvanterTipleri = () => {
   }, [])
 
   useEffect(() => {
-    const filtered = tipler.filter(tip => 
+    const filtered = tipler.filter(tip =>
       tip.ad.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tip.aciklama.toLowerCase().includes(searchTerm.toLowerCase())
     )
@@ -72,12 +72,12 @@ const EnvanterTipleri = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     try {
-      const url = editingTip 
+      const url = editingTip
         ? `/api/envanter-tipleri/${editingTip.id}`
         : '/api/envanter-tipleri'
-      
+
       const response = await fetch(url, {
         method: editingTip ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,11 +91,11 @@ const EnvanterTipleri = () => {
         return
       }
 
-      toast({ 
-        title: 'Başarılı', 
-        description: editingTip ? 'Envanter tipi güncellendi' : 'Envanter tipi oluşturuldu' 
+      toast({
+        title: 'Başarılı',
+        description: editingTip ? 'Envanter tipi güncellendi' : 'Envanter tipi oluşturuldu'
       })
-      
+
       setShowDialog(false)
       setFormData({ ad: '', aciklama: '' })
       setEditingTip(null)
@@ -176,8 +176,8 @@ const EnvanterTipleri = () => {
                         onClick={() => toggleExpand(tip.id)}
                         className="p-1 hover:bg-gray-200 rounded"
                       >
-                        {expandedTip === tip.id ? 
-                          <ChevronDown size={20} /> : 
+                        {expandedTip === tip.id ?
+                          <ChevronDown size={20} /> :
                           <ChevronRight size={20} />
                         }
                       </button>
@@ -207,15 +207,15 @@ const EnvanterTipleri = () => {
                       </div>
                     </div>
                     <div className="flex space-x-2 ml-4">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => openEditDialog(tip)}
                       >
                         <Pencil size={16} />
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => handleDelete(tip.id)}
                       >
@@ -302,7 +302,7 @@ const EnvanterTipleri = () => {
                 <Input
                   id="ad"
                   value={formData.ad}
-                  onChange={(e) => setFormData({ ...formData, ad: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, ad: toTitleCase(e.target.value) })}
                   required
                 />
               </div>

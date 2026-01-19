@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus, Package, ChevronDown, ChevronRight, QrCode, Printer } from 'lucide-react'
 import QRCode from 'qrcode'
 import { useToast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
+import { cn, toTitleCase } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
 
 const Envanterler = ({ user }) => {
@@ -886,7 +886,7 @@ const Envanterler = ({ user }) => {
                 <Input
                   id="marka"
                   value={formData.marka}
-                  onChange={(e) => setFormData({ ...formData, marka: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, marka: toTitleCase(e.target.value) })}
                   required
                 />
               </div>
@@ -895,7 +895,7 @@ const Envanterler = ({ user }) => {
                 <Input
                   id="model"
                   value={formData.model}
-                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, model: toTitleCase(e.target.value) })}
                   required
                 />
               </div>

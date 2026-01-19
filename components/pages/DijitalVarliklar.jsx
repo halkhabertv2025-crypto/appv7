@@ -167,10 +167,10 @@ const DijitalVarliklar = ({ user }) => {
     e.preventDefault()
 
     try {
-      const url = editingKategori 
+      const url = editingKategori
         ? `/api/dijital-varlik-kategorileri/${editingKategori.id}`
         : '/api/dijital-varlik-kategorileri'
-      
+
       const response = await fetch(url, {
         method: editingKategori ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -189,12 +189,38 @@ const DijitalVarliklar = ({ user }) => {
       }
 
       toast({ title: 'Başarılı', description: editingKategori ? 'Kategori güncellendi' : 'Kategori oluşturuldu' })
-      setShowKategoriDialog(false)
       setKategoriFormData({ ad: '', aciklama: '' })
       setEditingKategori(null)
       fetchKategoriler()
     } catch (error) {
       toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
+    }
+  }
+
+  const handleDeleteKategori = async (id) => {
+    if (!confirm('Bu kategoriyi silmek istediğinize emin misiniz?')) return
+
+    try {
+      const response = await fetch(`/api/dijital-varlik-kategorileri/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          userName: user?.adSoyad
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast({ title: 'Hata', description: data.error, variant: 'destructive' })
+        return
+      }
+
+      toast({ title: 'Başarılı', description: 'Kategori silindi' })
+      fetchKategoriler()
+    } catch (error) {
+      toast({ title: 'Hata', description: 'Silme işlemi başarısız', variant: 'destructive' })
     }
   }
 
@@ -424,8 +450,8 @@ const DijitalVarliklar = ({ user }) => {
         <CardContent className="p-0">
           {filteredVarliklar.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              {dijitalVarliklar.length === 0 
-                ? 'Henüz dijital varlık eklenmemiş' 
+              {dijitalVarliklar.length === 0
+                ? 'Henüz dijital varlık eklenmemiş'
                 : 'Arama kriterlerine uygun sonuç bulunamadı'}
             </div>
           ) : (
@@ -799,24 +825,40 @@ const DijitalVarliklar = ({ user }) => {
                   rows={2}
                 />
               </div>
-              {/* Mevcut kategorileri düzenleme listesi */}
-              {!editingKategori && kategoriler.length > 0 && (
-                <div className="border-t pt-4">
-                  <Label className="text-sm text-gray-500">Mevcut Kategoriler (düzenlemek için tıklayın)</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {kategoriler.map(kat => (
-                      <button
-                        key={kat.id}
-                        type="button"
-                        onClick={() => openEditKategori(kat)}
-                        className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200"
-                      >
-                        {kat.ad}
-                      </button>
-                    ))}
-                  </div>
+              <div className="mt-6 border-t pt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Mevcut Kategoriler</h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {kategoriler.map(kat => (
+                    <div key={kat.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm group">
+                      <div>
+                        <div className="font-medium">{kat.ad}</div>
+                        {kat.aciklama && <div className="text-xs text-gray-500">{kat.aciklama}</div>}
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => openEditKategori(kat)}
+                          className="p-1.5 hover:bg-blue-100 text-blue-600 rounded"
+                          title="Düzenle"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteKategori(kat.id)}
+                          className="p-1.5 hover:bg-red-100 text-red-600 rounded"
+                          title="Sil"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {kategoriler.length === 0 && (
+                    <div className="text-center text-gray-400 text-sm py-2">Kategori bulunmuyor</div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => {

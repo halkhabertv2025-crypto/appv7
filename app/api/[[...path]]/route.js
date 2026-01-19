@@ -1722,6 +1722,21 @@ async function handleRoute(request, { params }) {
       const id = route.split('/')[2]
       const body = await request.json().catch(() => ({}))
 
+      // Check if category is used
+      const usedByAsset = await db.collection('dijital_varliklar').findOne({
+        kategoriId: id,
+        deletedAt: null
+      })
+
+      if (usedByAsset) {
+        return handleCORS(NextResponse.json(
+          { error: "Bu kategoriye bağlı dijital varlıklar var. Önce onları silin veya kategorisini değiştirin." },
+          { status: 409 }
+        ))
+      }
+
+      const categoryToDelete = await db.collection('dijital_varlik_kategorileri').findOne({ id, deletedAt: null })
+
       const result = await db.collection('dijital_varlik_kategorileri').updateOne(
         { id, deletedAt: null },
         { $set: { deletedAt: new Date() } }
@@ -1733,6 +1748,16 @@ async function handleRoute(request, { params }) {
           { status: 404 }
         ))
       }
+
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'DELETE_DIGITAL_ASSET_CATEGORY',
+        'DigitalAssetCategory',
+        id,
+        { categoryName: categoryToDelete?.ad }
+      )
 
       return handleCORS(NextResponse.json({ success: true }))
     }
