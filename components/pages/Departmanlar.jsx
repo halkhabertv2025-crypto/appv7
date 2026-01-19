@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea'
 import { Plus, Pencil, Trash2, Search, Users, ChevronDown, ChevronRight } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { toTitleCase } from '@/lib/utils'
 
 const Departmanlar = ({ user }) => {
   const [departmanlar, setDepartmanlar] = useState([])
@@ -280,7 +281,7 @@ const Departmanlar = ({ user }) => {
                 <Input
                   id="ad"
                   value={formData.ad}
-                  onChange={(e) => setFormData({ ...formData, ad: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, ad: toTitleCase(e.target.value) })}
                   required
                 />
               </div>

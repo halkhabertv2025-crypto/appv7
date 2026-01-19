@@ -1102,7 +1102,7 @@ const Envanterler = ({ user }) => {
                   <Input
                     id="aksesuarMarka"
                     value={aksesuarFormData.marka}
-                    onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, marka: e.target.value })}
+                    onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, marka: toTitleCase(e.target.value) })}
                   />
                 </div>
                 <div>
@@ -1110,7 +1110,7 @@ const Envanterler = ({ user }) => {
                   <Input
                     id="aksesuarModel"
                     value={aksesuarFormData.model}
-                    onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, model: e.target.value })}
+                    onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, model: toTitleCase(e.target.value) })}
                   />
                 </div>
               </div>

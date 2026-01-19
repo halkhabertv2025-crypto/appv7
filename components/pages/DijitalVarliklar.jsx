@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Plus, Pencil, Trash2, Search, Key, Monitor, User, Calendar, Eye, EyeOff, Copy, FolderPlus } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
+import { cn, toTitleCase } from '@/lib/utils'
 
 const DijitalVarliklar = ({ user }) => {
   const [dijitalVarliklar, setDijitalVarliklar] = useState([])
@@ -598,7 +598,7 @@ const DijitalVarliklar = ({ user }) => {
                 <Input
                   id="ad"
                   value={formData.ad}
-                  onChange={(e) => setFormData({ ...formData, ad: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, ad: toTitleCase(e.target.value) })}
                   placeholder="Örn: Microsoft Office 365, Adobe Creative Cloud"
                   required
                 />
@@ -811,7 +811,7 @@ const DijitalVarliklar = ({ user }) => {
                 <Input
                   id="kategoriAd"
                   value={kategoriFormData.ad}
-                  onChange={(e) => setKategoriFormData({ ...kategoriFormData, ad: e.target.value })}
+                  onChange={(e) => setKategoriFormData({ ...kategoriFormData, ad: toTitleCase(e.target.value) })}
                   placeholder="Örn: Office, Antivirus, Adobe, Development"
                   required
                 />
