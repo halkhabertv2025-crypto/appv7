@@ -11,6 +11,7 @@ import Envanterler from '@/components/pages/Envanterler'
 import EnvanterTipleri from '@/components/pages/EnvanterTipleri'
 import Zimmetler from '@/components/pages/Zimmetler'
 import DijitalVarliklar from '@/components/pages/DijitalVarliklar'
+import BakimOnarim from '@/components/pages/BakimOnarim'
 import Ayarlar from '@/components/pages/Ayarlar'
 import BeninSayfam from '@/components/pages/BeninSayfam'
 import Login from '@/components/pages/Login'
@@ -79,6 +80,7 @@ export default function App() {
           {currentPage === 'envanter-tipleri' && <EnvanterTipleri />}
           {currentPage === 'zimmetler' && <Zimmetler user={user} />}
           {currentPage === 'dijital-varliklar' && <DijitalVarliklar user={user} />}
+          {currentPage === 'bakim-onarim' && <BakimOnarim user={user} />}
           {currentPage === 'ayarlar' && <Ayarlar />}
         </main>
       </div>

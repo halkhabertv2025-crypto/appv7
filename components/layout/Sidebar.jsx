@@ -8,7 +8,8 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
-  User
+  User,
+  Wrench
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -58,7 +59,8 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen, user }) => {
         { id: 'envanterler', label: 'Envanterler' },
         { id: 'envanter-tipleri', label: 'Envanter Tipleri' },
         { id: 'zimmetler', label: 'Zimmetler' },
-        { id: 'dijital-varliklar', label: 'Dijital Varlıklar' }
+        { id: 'dijital-varliklar', label: 'Dijital Varlıklar' },
+        { id: 'bakim-onarim', label: 'Bakım / Onarım' }
       ]
     },
     {

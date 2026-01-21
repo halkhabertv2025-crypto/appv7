@@ -13,6 +13,7 @@ const Dashboard = ({ user }) => {
   })
   const [recentZimmetler, setRecentZimmetler] = useState([])
   const [recentLogins, setRecentLogins] = useState([])
+  const [lastLogin, setLastLogin] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // Check if user has only çalışan yetkisi (limited access)
@@ -33,6 +34,7 @@ const Dashboard = ({ user }) => {
       setStats(data.stats)
       setRecentZimmetler(data.recentZimmetler)
       setRecentLogins(data.recentLogins || [])
+      setLastLogin(data.lastLogin || null)
     } catch (error) {
       console.error('Dashboard verileri alınamadı:', error)
     } finally {
@@ -200,15 +202,21 @@ const Dashboard = ({ user }) => {
           <CardTitle className="text-lg">Tebrikler</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-            <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
-              <span className="text-lg font-semibold">AE</span>
+          {lastLogin ? (
+            <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg border border-teal-100">
+              <div className="w-12 h-12 bg-teal-500 text-white rounded-full flex items-center justify-center shadow-md">
+                <span className="text-lg font-semibold">
+                  {lastLogin.userName?.split(' ').map(n => n[0]).join('').substring(0, 2) || '??'}
+                </span>
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-800">{lastLogin.userName}</div>
+                <div className="text-sm text-teal-600">Son Giriş - {new Date(lastLogin.timestamp).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</div>
+              </div>
             </div>
-            <div className="flex-1">
-              <div className="font-medium">Adem Elma</div>
-              <div className="text-sm text-gray-500">Yeni İşe Alım - Bugün</div>
-            </div>
-          </div>
+          ) : (
+            <div className="text-center py-4 text-gray-500">Henüz giriş kaydı yok</div>
+          )}
         </CardContent>
       </Card>
 

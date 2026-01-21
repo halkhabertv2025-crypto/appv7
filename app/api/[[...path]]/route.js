@@ -243,9 +243,17 @@ async function handleRoute(request, { params }) {
         .limit(5)
         .toArray()
 
+      // Get last login specifically for Tebrikler widget
+      const lastLogin = recentLogins.length > 0 ? {
+        userId: recentLogins[0].actorUserId,
+        userName: recentLogins[0].actorUserName,
+        timestamp: recentLogins[0].createdAt
+      } : null
+
       return handleCORS(NextResponse.json({
         stats,
         recentZimmetler: enrichedZimmetler,
+        lastLogin,
         recentLogins: recentLogins.map(log => ({
           userId: log.actorUserId,
           userName: log.actorUserName,
@@ -1017,6 +1025,12 @@ async function handleRoute(request, { params }) {
         seriNumarasi: body.seriNumarasi,
         durum: body.durum || 'Depoda',
         notlar: body.notlar || '',
+        // Financial/Depreciation fields
+        alisFiyati: body.alisFiyati || null,
+        paraBirimi: body.paraBirimi || 'TRY',
+        alisTarihi: body.alisTarihi ? new Date(body.alisTarihi) : null,
+        amortismanOrani: body.amortismanOrani || 20, // Default 20% per year
+        ekonomikOmur: body.ekonomikOmur || 5, // Default 5 years
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null
@@ -2094,6 +2108,266 @@ async function handleRoute(request, { params }) {
           digitalAssetCategories: digitalAssetCategories.map(({ _id, ...rest }) => rest)
         }
       }))
+    }
+
+    // ============= AMORTISMAN (Depreciation) =============
+    if (route === '/amortisman-raporu' && method === 'GET') {
+      const envanterler = await db.collection('envanterler')
+        .find({ deletedAt: null, alisFiyati: { $gt: 0 } })
+        .toArray()
+
+      const today = new Date()
+      const enrichedEnvanterler = await Promise.all(
+        envanterler.map(async (envanter) => {
+          const tip = await db.collection('envanter_tipleri').findOne({ id: envanter.envanterTipiId })
+
+          // Calculate depreciation
+          const alisFiyati = envanter.alisFiyati || 0
+          const amortismanOrani = envanter.amortismanOrani || 20
+          const alisTarihi = envanter.alisTarihi ? new Date(envanter.alisTarihi) : null
+
+          let gecenYil = 0
+          let yillikAmortisman = 0
+          let birikimliAmortisman = 0
+          let kalanDeger = alisFiyati
+
+          if (alisTarihi && alisFiyati > 0) {
+            gecenYil = (today.getTime() - alisTarihi.getTime()) / (1000 * 60 * 60 * 24 * 365)
+            yillikAmortisman = alisFiyati * (amortismanOrani / 100)
+            birikimliAmortisman = Math.min(yillikAmortisman * gecenYil, alisFiyati)
+            kalanDeger = Math.max(alisFiyati - birikimliAmortisman, 0)
+          }
+
+          return {
+            id: envanter.id,
+            envanterTipiAd: tip?.ad || 'Bilinmiyor',
+            marka: envanter.marka,
+            model: envanter.model,
+            seriNumarasi: envanter.seriNumarasi,
+            durum: envanter.durum,
+            alisFiyati,
+            paraBirimi: envanter.paraBirimi || 'TRY',
+            alisTarihi: envanter.alisTarihi,
+            amortismanOrani,
+            ekonomikOmur: envanter.ekonomikOmur || 5,
+            gecenYil: Math.round(gecenYil * 10) / 10,
+            yillikAmortisman: Math.round(yillikAmortisman * 100) / 100,
+            birikimliAmortisman: Math.round(birikimliAmortisman * 100) / 100,
+            kalanDeger: Math.round(kalanDeger * 100) / 100
+          }
+        })
+      )
+
+      // Summary by currency
+      const ozet = {
+        TRY: { toplamAlis: 0, toplamKalan: 0, toplamAmortisman: 0 },
+        USD: { toplamAlis: 0, toplamKalan: 0, toplamAmortisman: 0 },
+        EUR: { toplamAlis: 0, toplamKalan: 0, toplamAmortisman: 0 },
+        GBP: { toplamAlis: 0, toplamKalan: 0, toplamAmortisman: 0 }
+      }
+
+      enrichedEnvanterler.forEach(e => {
+        const pb = e.paraBirimi || 'TRY'
+        if (ozet[pb]) {
+          ozet[pb].toplamAlis += e.alisFiyati
+          ozet[pb].toplamKalan += e.kalanDeger
+          ozet[pb].toplamAmortisman += e.birikimliAmortisman
+        }
+      })
+
+      return handleCORS(NextResponse.json({
+        envanterler: enrichedEnvanterler,
+        ozet,
+        raporTarihi: today.toISOString()
+      }))
+    }
+
+    // ============= BAKIM/ONARIM (Maintenance) =============
+    if (route === '/bakim-kayitlari' && method === 'GET') {
+      const kayitlar = await db.collection('bakim_kayitlari')
+        .find({ deletedAt: null })
+        .sort({ createdAt: -1 })
+        .toArray()
+
+      // Enrich with inventory info
+      const enrichedKayitlar = await Promise.all(
+        kayitlar.map(async (kayit) => {
+          const envanter = await db.collection('envanterler').findOne({ id: kayit.envanterId })
+          const envanterTip = envanter ? await db.collection('envanter_tipleri').findOne({ id: envanter.envanterTipiId }) : null
+
+          return {
+            ...kayit,
+            envanterBilgisi: envanter ? {
+              tip: envanterTip?.ad || '',
+              marka: envanter.marka,
+              model: envanter.model,
+              seriNumarasi: envanter.seriNumarasi
+            } : null
+          }
+        })
+      )
+
+      return handleCORS(NextResponse.json(enrichedKayitlar.map(({ _id, ...rest }) => rest)))
+    }
+
+    if (route === '/bakim-kayitlari' && method === 'POST') {
+      const body = await request.json()
+
+      if (!body.envanterId || !body.arizaTuru) {
+        return handleCORS(NextResponse.json(
+          { error: "Envanter ve arıza türü zorunludur" },
+          { status: 400 }
+        ))
+      }
+
+      const kayit = {
+        id: uuidv4(),
+        envanterId: body.envanterId,
+        arizaTuru: body.arizaTuru, // "Donanım", "Yazılım", "Hasar", "Bakım"
+        aciklama: body.aciklama || '',
+        bildirilenTarih: body.bildirilenTarih ? new Date(body.bildirilenTarih) : new Date(),
+        servisFirma: body.servisFirma || '',
+        maliyet: body.maliyet || 0,
+        paraBirimi: body.paraBirimi || 'TRY', // TRY, USD, EUR, GBP
+        tahminiSure: body.tahminiSure || null, // Days
+        baslangicTarihi: body.baslangicTarihi ? new Date(body.baslangicTarihi) : null,
+        bitisTarihi: body.bitisTarihi ? new Date(body.bitisTarihi) : null,
+        durum: body.durum || 'Beklemede', // "Beklemede", "Serviste", "Tamamlandı", "İptal"
+        servisFisi: body.servisFisi || null, // File path for uploaded receipt
+        notlar: body.notlar || '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null
+      }
+
+      await db.collection('bakim_kayitlari').insertOne(kayit)
+
+      // Update envanter status if needed
+      if (body.updateEnvanterDurum) {
+        await db.collection('envanterler').updateOne(
+          { id: body.envanterId },
+          { $set: { durum: 'Arızalı', updatedAt: new Date() } }
+        )
+      }
+
+      // Audit log
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'CREATE_MAINTENANCE',
+        'Maintenance',
+        kayit.id,
+        { envanterId: body.envanterId, arizaTuru: body.arizaTuru }
+      )
+
+      const { _id, ...result } = kayit
+      return handleCORS(NextResponse.json(result))
+    }
+
+    if (route.startsWith('/bakim-kayitlari/') && method === 'PUT') {
+      const id = route.split('/')[2]
+      const body = await request.json()
+
+      const { userId, userName, ...updateFields } = body
+      const updateData = {
+        ...updateFields,
+        updatedAt: new Date()
+      }
+
+      // Handle date fields
+      if (updateData.bildirilenTarih) updateData.bildirilenTarih = new Date(updateData.bildirilenTarih)
+      if (updateData.baslangicTarihi) updateData.baslangicTarihi = new Date(updateData.baslangicTarihi)
+      if (updateData.bitisTarihi) updateData.bitisTarihi = new Date(updateData.bitisTarihi)
+
+      const result = await db.collection('bakim_kayitlari').updateOne(
+        { id, deletedAt: null },
+        { $set: updateData }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Bakım kaydı bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      // If status changed to Tamamlandı, optionally update envanter status
+      if (updateFields.durum === 'Tamamlandı' && updateFields.restoreEnvanterDurum) {
+        const kayit = await db.collection('bakim_kayitlari').findOne({ id })
+        if (kayit) {
+          await db.collection('envanterler').updateOne(
+            { id: kayit.envanterId },
+            { $set: { durum: 'Depoda', updatedAt: new Date() } }
+          )
+        }
+      }
+
+      await createAuditLog(
+        userId || 'system',
+        userName || 'System',
+        'UPDATE_MAINTENANCE',
+        'Maintenance',
+        id,
+        { updates: Object.keys(updateFields) }
+      )
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
+    if (route.startsWith('/bakim-kayitlari/') && method === 'DELETE') {
+      const id = route.split('/')[2]
+      const body = await request.json().catch(() => ({}))
+
+      const result = await db.collection('bakim_kayitlari').updateOne(
+        { id, deletedAt: null },
+        { $set: { deletedAt: new Date() } }
+      )
+
+      if (result.matchedCount === 0) {
+        return handleCORS(NextResponse.json(
+          { error: "Bakım kaydı bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      await createAuditLog(
+        body.userId || 'system',
+        body.userName || 'System',
+        'DELETE_MAINTENANCE',
+        'Maintenance',
+        id,
+        {}
+      )
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
+    // Bakım İstatistikleri
+    if (route === '/bakim-istatistikleri' && method === 'GET') {
+      const kayitlar = await db.collection('bakim_kayitlari')
+        .find({ deletedAt: null })
+        .toArray()
+
+      const stats = {
+        toplamKayit: kayitlar.length,
+        beklemede: kayitlar.filter(k => k.durum === 'Beklemede').length,
+        serviste: kayitlar.filter(k => k.durum === 'Serviste').length,
+        tamamlanan: kayitlar.filter(k => k.durum === 'Tamamlandı').length,
+        toplamMaliyet: {
+          TRY: kayitlar.filter(k => k.paraBirimi === 'TRY').reduce((sum, k) => sum + (k.maliyet || 0), 0),
+          USD: kayitlar.filter(k => k.paraBirimi === 'USD').reduce((sum, k) => sum + (k.maliyet || 0), 0),
+          EUR: kayitlar.filter(k => k.paraBirimi === 'EUR').reduce((sum, k) => sum + (k.maliyet || 0), 0),
+          GBP: kayitlar.filter(k => k.paraBirimi === 'GBP').reduce((sum, k) => sum + (k.maliyet || 0), 0)
+        },
+        arizaTiplerineGore: {
+          donanim: kayitlar.filter(k => k.arizaTuru === 'Donanım').length,
+          yazilim: kayitlar.filter(k => k.arizaTuru === 'Yazılım').length,
+          hasar: kayitlar.filter(k => k.arizaTuru === 'Hasar').length,
+          bakim: kayitlar.filter(k => k.arizaTuru === 'Bakım').length
+        }
+      }
+
+      return handleCORS(NextResponse.json(stats))
     }
 
     // Route not found

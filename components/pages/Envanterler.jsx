@@ -38,7 +38,11 @@ const Envanterler = ({ user }) => {
     model: '',
     seriNumarasi: '',
     durum: 'Depoda',
-    notlar: ''
+    notlar: '',
+    // Financial fields
+    alisFiyati: '',
+    paraBirimi: 'TRY',
+    alisTarihi: ''
   })
   const [zimmetFormData, setZimmetFormData] = useState({
     calisanId: '',
@@ -270,6 +274,31 @@ const Envanterler = ({ user }) => {
         description: editingEnvanter ? 'Envanter güncellendi' : 'Envanter oluşturuldu'
       })
 
+      // If status changed to Servis, auto-create a Bakım/Onarım record
+      if (editingEnvanter && newDurum === 'Servis' && oldDurum !== 'Servis') {
+        try {
+          await fetch('/api/bakim-kayitlari', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              envanterId: editingEnvanter.id,
+              arizaTuru: 'Bakım',
+              aciklama: 'Servis için gönderildi',
+              bildirilenTarih: new Date().toISOString(),
+              durum: 'Serviste',
+              userId: user?.id,
+              userName: user?.adSoyad
+            })
+          })
+          toast({
+            title: 'Bilgi',
+            description: 'Bakım/Onarım kaydı otomatik oluşturuldu'
+          })
+        } catch (err) {
+          console.error('Bakım kaydı oluşturulamadı:', err)
+        }
+      }
+
       setShowDialog(false)
       setFormData({
         envanterTipiId: '',
@@ -277,7 +306,10 @@ const Envanterler = ({ user }) => {
         model: '',
         seriNumarasi: '',
         durum: 'Depoda',
-        notlar: ''
+        notlar: '',
+        alisFiyati: '',
+        paraBirimi: 'TRY',
+        alisTarihi: ''
       })
       setEditingEnvanter(null)
       fetchEnvanterler()
@@ -579,7 +611,10 @@ const Envanterler = ({ user }) => {
       model: envanter.model,
       seriNumarasi: envanter.seriNumarasi,
       durum: envanter.durum,
-      notlar: envanter.notlar
+      notlar: envanter.notlar || '',
+      alisFiyati: envanter.alisFiyati?.toString() || '',
+      paraBirimi: envanter.paraBirimi || 'TRY',
+      alisTarihi: envanter.alisTarihi ? new Date(envanter.alisTarihi).toISOString().split('T')[0] : ''
     })
     setShowDialog(true)
   }
@@ -592,7 +627,10 @@ const Envanterler = ({ user }) => {
       model: '',
       seriNumarasi: '',
       durum: 'Depoda',
-      notlar: ''
+      notlar: '',
+      alisFiyati: '',
+      paraBirimi: 'TRY',
+      alisTarihi: ''
     })
     setShowDialog(true)
   }
@@ -929,6 +967,7 @@ const Envanterler = ({ user }) => {
                       <SelectItem value="Zimmetli">Zimmetle</SelectItem>
                     )}
                     <SelectItem value="Arızalı">Arızalı</SelectItem>
+                    <SelectItem value="Servis">Servis</SelectItem>
                     <SelectItem value="Kayıp">Kayıp</SelectItem>
                   </SelectContent>
                 </Select>
@@ -938,6 +977,51 @@ const Envanterler = ({ user }) => {
                   </p>
                 )}
               </div>
+
+              {/* Financial Section */}
+              <div className="col-span-2 border-t pt-4 mt-2">
+                <h4 className="font-medium text-gray-700 mb-3">Finansal Bilgiler</h4>
+              </div>
+
+              <div>
+                <Label htmlFor="alisFiyati">Alış Fiyatı</Label>
+                <Input
+                  id="alisFiyati"
+                  type="number"
+                  value={formData.alisFiyati}
+                  onChange={(e) => setFormData({ ...formData, alisFiyati: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="paraBirimi">Para Birimi</Label>
+                <Select
+                  value={formData.paraBirimi}
+                  onValueChange={(value) => setFormData({ ...formData, paraBirimi: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TRY">₺ TRY</SelectItem>
+                    <SelectItem value="USD">$ USD</SelectItem>
+                    <SelectItem value="EUR">€ EUR</SelectItem>
+                    <SelectItem value="GBP">£ GBP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="alisTarihi">Alış Tarihi</Label>
+                <Input
+                  id="alisTarihi"
+                  type="date"
+                  value={formData.alisTarihi}
+                  onChange={(e) => setFormData({ ...formData, alisTarihi: e.target.value })}
+                />
+              </div>
+
               <div className="col-span-2">
                 <Label htmlFor="notlar">Notlar</Label>
                 <Textarea
