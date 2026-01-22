@@ -267,7 +267,8 @@ async function handleRoute(request, { params }) {
             seriNumarasi: envanter?.seriNumarasi || '',
             servisFirma: kayit.servisFirma,
             baslangicTarihi: kayit.baslangicTarihi,
-            tahminiSure: kayit.tahminiSure, // expected days
+            bitisTarihi: kayit.bitisTarihi,
+            tahminiSure: kayit.tahminiSure, // Keeping for backward compatibility
             durum: kayit.durum
           }
         })

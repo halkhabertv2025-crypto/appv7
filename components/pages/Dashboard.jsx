@@ -170,15 +170,31 @@ const Dashboard = ({ user }) => {
               <div className="space-y-4">
                 {servistekiCihazlar.map((device) => {
                   const startDate = new Date(device.baslangicTarihi)
+                  const endDate = device.bitisTarihi ? new Date(device.bitisTarihi) : null
                   const today = new Date()
-                  const estimatedDays = device.tahminiSure || 7 // Default 7 days if not set
-                  const elapsedDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
-                  const progress = Math.min(100, Math.max(0, (elapsedDays / estimatedDays) * 100))
 
-                  // Color based on urgency
+                  let remainingDays = null
+                  let totalDuration = 7
+                  let elapsedDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
+
+                  if (endDate) {
+                    const diffTime = endDate - today
+                    remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+                    totalDuration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) || 1
+                  } else {
+                    // Fallback to estimated duration if manual end date not set
+                    totalDuration = device.tahminiSure || 7
+                  }
+
+                  const progress = Math.min(100, Math.max(0, (elapsedDays / totalDuration) * 100))
+
+                  // Color based on remaining time
                   let progressColor = 'bg-blue-500'
-                  if (progress > 80) progressColor = 'bg-yellow-500'
-                  if (elapsedDays >= estimatedDays) progressColor = 'bg-red-500'
+                  if (remainingDays !== null && remainingDays <= 2) progressColor = 'bg-yellow-500'
+                  if (remainingDays !== null && remainingDays < 0) progressColor = 'bg-red-500'
+
+                  // If no end date, use old logic for color
+                  if (remainingDays === null && elapsedDays >= totalDuration) progressColor = 'bg-red-500'
 
                   return (
                     <div key={device.id} className="border rounded-lg p-3">
@@ -190,12 +206,32 @@ const Dashboard = ({ user }) => {
                       </div>
                       <div className="flex justify-between text-xs text-gray-500 mb-1">
                         <span>Başlangıç: {startDate.toLocaleDateString('tr-TR')}</span>
-                        <span>Geçen Süre: {elapsedDays} gün / Tahmini: {estimatedDays} gün</span>
+                        <span>
+                          {remainingDays !== null ? (
+                            remainingDays < 0
+                              ? `${Math.abs(remainingDays)} gün gecikti`
+                              : `${remainingDays} gün kaldı`
+                          ) : (
+                            `${elapsedDays} gün geçti (Tahmini: ${totalDuration} gün)`
+                          )}
+                        </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
                         <div className={`h-2.5 rounded-full ${progressColor}`} style={{ width: `${progress}%` }}></div>
                       </div>
-                      {elapsedDays >= estimatedDays && (
+                      {remainingDays !== null && remainingDays === 0 && (
+                        <div className="text-xs text-orange-600 mt-1 flex items-center font-bold">
+                          <AlertCircle size={12} className="mr-1" />
+                          Bugün teslim günü!
+                        </div>
+                      )}
+                      {remainingDays !== null && remainingDays < 0 && (
+                        <div className="text-xs text-red-600 mt-1 flex items-center">
+                          <AlertCircle size={12} className="mr-1" />
+                          Teslim süresi aşıldı
+                        </div>
+                      )}
+                      {remainingDays === null && elapsedDays >= totalDuration && (
                         <div className="text-xs text-red-600 mt-1 flex items-center">
                           <AlertCircle size={12} className="mr-1" />
                           Tahmini süre doldu veya aşıldı
@@ -236,61 +272,7 @@ const Dashboard = ({ user }) => {
         </Card>
       </div>
 
-      {/* Service Tracking Widget */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center">
-            <Wrench className="mr-2 text-blue-600" size={20} />
-            Servisteki Cihazlar
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {servistekiCihazlar.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              Şu anda serviste olan cihaz bulunmamaktadır
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {servistekiCihazlar.map((device) => {
-                const startDate = new Date(device.baslangicTarihi)
-                const today = new Date()
-                const estimatedDays = device.tahminiSure || 7 // Default 7 days if not set
-                const elapsedDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
-                const progress = Math.min(100, Math.max(0, (elapsedDays / estimatedDays) * 100))
 
-                // Color based on urgency
-                let progressColor = 'bg-blue-500'
-                if (progress > 80) progressColor = 'bg-yellow-500'
-                if (elapsedDays >= estimatedDays) progressColor = 'bg-red-500'
-
-                return (
-                  <div key={device.id} className="border rounded-lg p-3">
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="font-medium text-sm">{device.envanterAd}</div>
-                      <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        {device.servisFirma}
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Başlangıç: {startDate.toLocaleDateString('tr-TR')}</span>
-                      <span>Geçen Süre: {elapsedDays} gün / Tahmini: {estimatedDays} gün</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div className={`h-2.5 rounded-full ${progressColor}`} style={{ width: `${progress}%` }}></div>
-                    </div>
-                    {elapsedDays >= estimatedDays && (
-                      <div className="text-xs text-red-600 mt-1 flex items-center">
-                        <AlertCircle size={12} className="mr-1" />
-                        Tahmini süre doldu veya aşıldı
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
