@@ -2364,6 +2364,85 @@ async function handleRoute(request, { params }) {
         }
       }
 
+      // Send email notification when status changes to Tamamlandı
+      if (updateFields.durum === 'Tamamlandı') {
+        const kayit = await db.collection('bakim_kayitlari').findOne({ id })
+        const envanter = kayit ? await db.collection('envanterler').findOne({ id: kayit.envanterId }) : null
+
+        // Get mail settings
+        const mailSettings = await db.collection('system_settings').findOne({ id: 'mail_settings' })
+
+        if (mailSettings && mailSettings.smtpHost && mailSettings.smtpUser) {
+          try {
+            const nodemailer = require('nodemailer')
+
+            // Get all admins and managers emails
+            const admins = await db.collection('calisanlar')
+              .find({
+                $or: [{ adminYetkisi: true }, { yoneticiYetkisi: true }],
+                deletedAt: null,
+                email: { $exists: true, $ne: '' }
+              })
+              .toArray()
+
+            if (admins.length > 0) {
+              const transporter = nodemailer.createTransport({
+                host: mailSettings.smtpHost,
+                port: mailSettings.smtpPort,
+                secure: mailSettings.enableSsl,
+                auth: {
+                  user: mailSettings.smtpUser,
+                  pass: mailSettings.smtpPassword
+                }
+              })
+
+              const envanterAd = envanter ? `${envanter.marka} ${envanter.model}` : 'Bilinmeyen Envanter'
+              const servisFirma = kayit.servisFirma || 'Bilinmeyen Firma'
+
+              const emailContent = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <div style="background-color: #14b8a6; color: white; padding: 20px; text-align: center;">
+                    <h1 style="margin: 0;">Halk TV Envanter Sistemi</h1>
+                  </div>
+                  <div style="padding: 20px; background-color: #f9fafb;">
+                    <h2 style="color: #1f2937;">Servis Bildirimi</h2>
+                    <p style="color: #4b5563; font-size: 16px;">
+                      <strong>${envanterAd}</strong> envanteri <strong>${servisFirma}</strong> firmasından, arıza işlemi tamamlanmıştır.
+                    </p>
+                    <div style="margin-top: 20px; padding: 15px; background-color: #ecfdf5; border-left: 4px solid #10b981; border-radius: 4px;">
+                      <p style="margin: 0; color: #065f46;"><strong>Detaylar:</strong></p>
+                      <ul style="color: #047857; margin-top: 10px;">
+                        <li>Arıza Türü: ${kayit.arizaTuru || '-'}</li>
+                        <li>Bitiş Tarihi: ${kayit.bitisTarihi ? new Date(kayit.bitisTarihi).toLocaleDateString('tr-TR') : '-'}</li>
+                        ${kayit.maliyet ? `<li>Maliyet: ${kayit.maliyet} ${kayit.paraBirimi || 'TRY'}</li>` : ''}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              `
+
+              // Send to all admins
+              for (const admin of admins) {
+                try {
+                  await transporter.sendMail({
+                    from: `"${mailSettings.fromName}" <${mailSettings.fromEmail}>`,
+                    to: admin.email,
+                    subject: 'Servis Bildirimi',
+                    html: emailContent
+                  })
+                } catch (mailError) {
+                  console.error(`Mail gönderilemedi (${admin.email}):`, mailError)
+                }
+              }
+              console.log(`Bakım bildirimi gönderildi: ${admins.length} kişiye`)
+            }
+          } catch (error) {
+            console.error('Bakım bildirimi gönderilemedi:', error)
+            // Don't fail the request if email fails
+          }
+        }
+      }
+
       await createAuditLog(
         userId || 'system',
         userName || 'System',
@@ -2430,6 +2509,127 @@ async function handleRoute(request, { params }) {
       }
 
       return handleCORS(NextResponse.json(stats))
+    }
+
+    // ============= MAIL SETTINGS =============
+    if (route === '/settings/mail' && method === 'GET') {
+      const settings = await db.collection('system_settings').findOne({ id: 'mail_settings' })
+
+      // Return settings without password for security
+      const safeSettings = settings ? {
+        smtpHost: settings.smtpHost || '',
+        smtpPort: settings.smtpPort || 587,
+        smtpUser: settings.smtpUser || '',
+        smtpPassword: settings.smtpPassword ? '********' : '', // Masked
+        fromEmail: settings.fromEmail || '',
+        fromName: settings.fromName || 'Halk TV Envanter Sistemi',
+        enableSsl: settings.enableSsl !== false,
+        hasPassword: !!settings.smtpPassword
+      } : {
+        smtpHost: '',
+        smtpPort: 587,
+        smtpUser: '',
+        smtpPassword: '',
+        fromEmail: '',
+        fromName: 'Halk TV Envanter Sistemi',
+        enableSsl: true,
+        hasPassword: false
+      }
+
+      return handleCORS(NextResponse.json(safeSettings))
+    }
+
+    if (route === '/settings/mail' && method === 'PUT') {
+      const body = await request.json()
+
+      const updateData = {
+        id: 'mail_settings',
+        smtpHost: body.smtpHost || '',
+        smtpPort: parseInt(body.smtpPort) || 587,
+        smtpUser: body.smtpUser || '',
+        fromEmail: body.fromEmail || '',
+        fromName: body.fromName || 'Halk TV Envanter Sistemi',
+        enableSsl: body.enableSsl !== false,
+        updatedAt: new Date()
+      }
+
+      // Only update password if a new one is provided (not the masked placeholder)
+      if (body.smtpPassword && body.smtpPassword !== '********') {
+        updateData.smtpPassword = body.smtpPassword
+      }
+
+      await db.collection('system_settings').updateOne(
+        { id: 'mail_settings' },
+        { $set: updateData },
+        { upsert: true }
+      )
+
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
+    if (route === '/settings/mail/test' && method === 'POST') {
+      const body = await request.json()
+      const testEmail = body.testEmail
+
+      if (!testEmail) {
+        return handleCORS(NextResponse.json(
+          { error: "Test email adresi zorunludur" },
+          { status: 400 }
+        ))
+      }
+
+      // Get current settings
+      const settings = await db.collection('system_settings').findOne({ id: 'mail_settings' })
+
+      if (!settings || !settings.smtpHost || !settings.smtpUser) {
+        return handleCORS(NextResponse.json(
+          { error: "Mail ayarları yapılandırılmamış. Önce SMTP ayarlarını kaydedin." },
+          { status: 400 }
+        ))
+      }
+
+      try {
+        // Dynamic import for nodemailer
+        const nodemailer = require('nodemailer')
+
+        const transporter = nodemailer.createTransport({
+          host: settings.smtpHost,
+          port: settings.smtpPort,
+          secure: settings.enableSsl,
+          auth: {
+            user: settings.smtpUser,
+            pass: settings.smtpPassword
+          }
+        })
+
+        await transporter.sendMail({
+          from: `"${settings.fromName}" <${settings.fromEmail}>`,
+          to: testEmail,
+          subject: 'Halk TV - Mail Test',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background-color: #14b8a6; color: white; padding: 20px; text-align: center;">
+                <h1 style="margin: 0;">Halk TV Envanter Sistemi</h1>
+              </div>
+              <div style="padding: 20px; background-color: #f9fafb;">
+                <h2 style="color: #1f2937;">✅ Mail Testi Başarılı</h2>
+                <p style="color: #4b5563;">Bu bir test mailidir. Mail ayarlarınız doğru yapılandırılmıştır.</p>
+                <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+                  Test tarihi: ${new Date().toLocaleString('tr-TR')}
+                </p>
+              </div>
+            </div>
+          `
+        })
+
+        return handleCORS(NextResponse.json({ success: true, message: 'Test maili gönderildi' }))
+      } catch (error) {
+        console.error('Mail test error:', error)
+        return handleCORS(NextResponse.json(
+          { error: `Mail gönderilemedi: ${error.message}` },
+          { status: 500 }
+        ))
+      }
     }
 
     // Route not found
