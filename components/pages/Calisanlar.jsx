@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useDeferredValue } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -59,14 +59,16 @@ const Calisanlar = ({ user }) => {
     fetchDepartmanlar()
   }, [])
 
+  const deferredSearchTerm = useDeferredValue(searchTerm)
+
   useEffect(() => {
     const filtered = calisanlar.filter(cal =>
-      cal.adSoyad.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cal.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cal.departmanAd.toLowerCase().includes(searchTerm.toLowerCase())
+      cal.adSoyad.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+      cal.email.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+      cal.departmanAd.toLowerCase().includes(deferredSearchTerm.toLowerCase())
     )
     setFilteredCalisanlar(filtered)
-  }, [searchTerm, calisanlar])
+  }, [deferredSearchTerm, calisanlar])
 
   const fetchCalisanlar = async () => {
     try {
