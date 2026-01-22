@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Package, PackageCheck, PackageMinus, PackageX, TrendingUp } from 'lucide-react'
+import { Package, PackageCheck, PackageMinus, PackageX, TrendingUp, Clock, AlertCircle, Wrench, CheckCircle } from 'lucide-react'
 
 const Dashboard = ({ user }) => {
   const [stats, setStats] = useState({
@@ -14,6 +14,8 @@ const Dashboard = ({ user }) => {
   const [recentZimmetler, setRecentZimmetler] = useState([])
   const [recentLogins, setRecentLogins] = useState([])
   const [lastLogin, setLastLogin] = useState(null)
+  const [servistekiCihazlar, setServistekiCihazlar] = useState([])
+  const [tamamlananBakimlar, setTamamlananBakimlar] = useState([])
   const [loading, setLoading] = useState(true)
 
   // Check if user has only çalışan yetkisi (limited access)
@@ -35,6 +37,8 @@ const Dashboard = ({ user }) => {
       setRecentZimmetler(data.recentZimmetler)
       setRecentLogins(data.recentLogins || [])
       setLastLogin(data.lastLogin || null)
+      setServistekiCihazlar(data.servistekiCihazlar || [])
+      setTamamlananBakimlar(data.tamamlananBakimlar || [])
     } catch (error) {
       console.error('Dashboard verileri alınamadı:', error)
     } finally {
@@ -93,6 +97,31 @@ const Dashboard = ({ user }) => {
         <p className="text-gray-500">Merhaba, Halk TV'ye hoş geldiniz</p>
       </div>
 
+      {/* Admin Notification for Completed Repairs */}
+      {(!hasLimitedAccess && tamamlananBakimlar.length > 0) && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <CheckCircle className="text-green-600 mt-1 mr-3" size={20} />
+            <div className="flex-1">
+              <h3 className="text-lg font-medium text-green-800 mb-2">Tamamlanan Bakım/Onarım Bildirimleri</h3>
+              <div className="space-y-2">
+                {tamamlananBakimlar.map((bakim) => (
+                  <div key={bakim.id} className="text-sm text-green-700 flex justify-between items-center bg-white p-2 rounded border border-green-100">
+                    <span>
+                      <strong>{bakim.envanterAd}</strong> cihazının bakımı tamamlandı.
+                      {bakim.maliyet > 0 && ` (Maliyet: ${bakim.maliyet} ${bakim.paraBirimi})`}
+                    </span>
+                    <span className="text-xs text-green-500">
+                      {new Date(bakim.bitisTarihi).toLocaleDateString('tr-TR')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat, index) => {
           const Icon = stat.icon
@@ -149,6 +178,62 @@ const Dashboard = ({ user }) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Service Tracking Widget */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center">
+            <Wrench className="mr-2 text-blue-600" size={20} />
+            Servisteki Cihazlar
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {servistekiCihazlar.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              Şu anda serviste olan cihaz bulunmamaktadır
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {servistekiCihazlar.map((device) => {
+                const startDate = new Date(device.baslangicTarihi)
+                const today = new Date()
+                const estimatedDays = device.tahminiSure || 7 // Default 7 days if not set
+                const elapsedDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
+                const progress = Math.min(100, Math.max(0, (elapsedDays / estimatedDays) * 100))
+
+                // Color based on urgency
+                let progressColor = 'bg-blue-500'
+                if (progress > 80) progressColor = 'bg-yellow-500'
+                if (elapsedDays >= estimatedDays) progressColor = 'bg-red-500'
+
+                return (
+                  <div key={device.id} className="border rounded-lg p-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="font-medium text-sm">{device.envanterAd}</div>
+                      <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                        {device.servisFirma}
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Başlangıç: {startDate.toLocaleDateString('tr-TR')}</span>
+                      <span>Geçen Süre: {elapsedDays} gün / Tahmini: {estimatedDays} gün</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div className={`h-2.5 rounded-full ${progressColor}`} style={{ width: `${progress}%` }}></div>
+                    </div>
+                    {elapsedDays >= estimatedDays && (
+                      <div className="text-xs text-red-600 mt-1 flex items-center">
+                        <AlertCircle size={12} className="mr-1" />
+                        Tahmini süre doldu veya aşıldı
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

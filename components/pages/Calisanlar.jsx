@@ -211,6 +211,15 @@ const Calisanlar = ({ user }) => {
   }
 
   const openEditDialog = (calisan) => {
+    if (calisan.aktifZimmetSayisi > 0) {
+      toast({
+        title: 'İşlem Engellendi',
+        description: 'Üzerinde zimmetli envanter bulunan çalışan düzenlenemez. Önce zimmetleri iade alınız.',
+        variant: 'destructive'
+      })
+      return
+    }
+
     setEditingCalisan(calisan)
     setFormData({
       adSoyad: calisan.adSoyad,

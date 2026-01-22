@@ -250,6 +250,54 @@ async function handleRoute(request, { params }) {
         timestamp: recentLogins[0].createdAt
       } : null
 
+      // Fetch active repairs for Service Widget
+      const servistekiCihazlar = await db.collection('bakim_kayitlari')
+        .find({ durum: 'Serviste', deletedAt: null })
+        .sort({ baslangicTarihi: -1 })
+        .toArray()
+
+      const enrichedServisteki = await Promise.all(
+        servistekiCihazlar.map(async (kayit) => {
+          const envanter = await db.collection('envanterler').findOne({ id: kayit.envanterId })
+          const envanterTip = envanter ? await db.collection('envanter_tipleri').findOne({ id: envanter.envanterTipiId }) : null
+
+          return {
+            id: kayit.id,
+            envanterAd: envanter ? `${envanterTip?.ad || ''} ${envanter.marka} ${envanter.model}` : 'Bilinmiyor',
+            seriNumarasi: envanter?.seriNumarasi || '',
+            servisFirma: kayit.servisFirma,
+            baslangicTarihi: kayit.baslangicTarihi,
+            tahminiSure: kayit.tahminiSure, // expected days
+            durum: kayit.durum
+          }
+        })
+      )
+
+      // Recent completed repairs (for Admin notification)
+      const finishedRepairs = await db.collection('bakim_kayitlari')
+        .find({
+          durum: 'Tamamlandı',
+          deletedAt: null,
+          bitisTarihi: { $gte: new Date(new Date().setDate(new Date().getDate() - 7)) } // Last 7 days
+        })
+        .sort({ bitisTarihi: -1 })
+        .toArray()
+
+      const enrichedFinished = await Promise.all(
+        finishedRepairs.map(async (kayit) => {
+          const envanter = await db.collection('envanterler').findOne({ id: kayit.envanterId })
+          const envanterTip = envanter ? await db.collection('envanter_tipleri').findOne({ id: envanter.envanterTipiId }) : null
+
+          return {
+            id: kayit.id,
+            envanterAd: envanter ? `${envanterTip?.ad || ''} ${envanter.marka} ${envanter.model}` : 'Bilinmiyor',
+            bitisTarihi: kayit.bitisTarihi,
+            maliyet: kayit.maliyet,
+            paraBirimi: kayit.paraBirimi
+          }
+        })
+      )
+
       return handleCORS(NextResponse.json({
         stats,
         recentZimmetler: enrichedZimmetler,
@@ -258,7 +306,9 @@ async function handleRoute(request, { params }) {
           userId: log.actorUserId,
           userName: log.actorUserName,
           timestamp: log.createdAt
-        }))
+        })),
+        servistekiCihazlar: enrichedServisteki,
+        tamamlananBakimlar: enrichedFinished
       }))
     }
 
@@ -2242,11 +2292,11 @@ async function handleRoute(request, { params }) {
 
       await db.collection('bakim_kayitlari').insertOne(kayit)
 
-      // Update envanter status if needed
-      if (body.updateEnvanterDurum) {
+      // Update envanter status automatically if status is 'Serviste'
+      if (body.durum === 'Serviste') {
         await db.collection('envanterler').updateOne(
           { id: body.envanterId },
-          { $set: { durum: 'Arızalı', updatedAt: new Date() } }
+          { $set: { durum: 'Servis', updatedAt: new Date() } }
         )
       }
 
@@ -2289,6 +2339,17 @@ async function handleRoute(request, { params }) {
           { error: "Bakım kaydı bulunamadı" },
           { status: 404 }
         ))
+      }
+
+      // If status changed to Serviste, update envanter status
+      if (updateFields.durum === 'Serviste') {
+        const kayit = await db.collection('bakim_kayitlari').findOne({ id })
+        if (kayit) {
+          await db.collection('envanterler').updateOne(
+            { id: kayit.envanterId },
+            { $set: { durum: 'Servis', updatedAt: new Date() } }
+          )
+        }
       }
 
       // If status changed to Tamamlandı, optionally update envanter status
