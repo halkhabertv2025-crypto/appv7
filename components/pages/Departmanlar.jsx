@@ -62,9 +62,17 @@ const Departmanlar = ({ user }) => {
     }
   }
 
-  const getCalisanlarByDept = (deptId) => {
-    return calisanlar.filter(c => c.departmanId === deptId && c.durum === 'Aktif')
-  }
+  // Optimize: Group employees by department once when calisanlar changes
+  const employeesByDept = React.useMemo(() => {
+    const map = {}
+    calisanlar.forEach(c => {
+      if (c.durum === 'Aktif') {
+        if (!map[c.departmanId]) map[c.departmanId] = []
+        map[c.departmanId].push(c)
+      }
+    })
+    return map
+  }, [calisanlar])
 
   const toggleDept = (deptId) => {
     setExpandedDepts(prev => ({ ...prev, [deptId]: !prev[deptId] }))
@@ -191,7 +199,7 @@ const Departmanlar = ({ user }) => {
                 </thead>
                 <tbody>
                   {filteredDepartmanlar.map((departman) => {
-                    const deptCalisanlar = getCalisanlarByDept(departman.id)
+                    const deptCalisanlar = employeesByDept[departman.id] || []
                     const isExpanded = expandedDepts[departman.id]
 
                     return (
