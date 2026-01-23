@@ -1103,6 +1103,83 @@ async function handleRoute(request, { params }) {
         }
       )
 
+      // Send email notification for new inventory
+      const mailSettings = await db.collection('system_settings').findOne({ id: 'mail_settings' })
+
+      if (mailSettings && mailSettings.smtpHost && mailSettings.smtpUser) {
+        try {
+          const nodemailer = require('nodemailer')
+          const envanterTip = await db.collection('envanter_tipleri').findOne({ id: envanter.envanterTipiId })
+
+          // Get all admins and managers emails
+          const admins = await db.collection('calisanlar')
+            .find({
+              $or: [{ adminYetkisi: true }, { yoneticiYetkisi: true }],
+              deletedAt: null,
+              email: { $exists: true, $ne: '' }
+            })
+            .toArray()
+
+          if (admins.length > 0) {
+            const transporter = nodemailer.createTransport({
+              host: mailSettings.smtpHost,
+              port: mailSettings.smtpPort,
+              secure: mailSettings.enableSsl,
+              auth: {
+                user: mailSettings.smtpUser,
+                pass: mailSettings.smtpPassword
+              }
+            })
+
+            const emailContent = `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #14b8a6; color: white; padding: 20px; text-align: center;">
+                  <h1 style="margin: 0;">Halk TV Envanter Sistemi</h1>
+                </div>
+                <div style="padding: 20px; background-color: #f9fafb;">
+                  <h2 style="color: #1f2937;">Yeni Envanter Eklendi</h2>
+                  <div style="margin-top: 20px; padding: 15px; background-color: #e0f2fe; border-left: 4px solid #0284c7; border-radius: 4px;">
+                    <p style="margin: 0; color: #0369a1;"><strong>Envanter Detayları:</strong></p>
+                    <ul style="color: #0c4a6e; margin-top: 10px;">
+                      <li>Tip: ${envanterTip?.ad || '-'}</li>
+                      <li>Marka: ${envanter.marka}</li>
+                      <li>Model: ${envanter.model}</li>
+                      <li>Seri No: ${envanter.seriNumarasi}</li>
+                      <li>Durum: ${envanter.durum}</li>
+                      ${envanter.alisFiyati ? `<li>Alış Fiyatı: ${envanter.alisFiyati} ${envanter.paraBirimi}</li>` : ''}
+                    </ul>
+                  </div>
+                  <div style="margin-top: 15px; padding: 10px; background-color: #f3f4f6; border-radius: 4px;">
+                    <p style="margin: 0; color: #4b5563; font-size: 14px;">
+                      <strong>Ekleyen:</strong> ${body.userName || 'Bilinmiyor'}<br/>
+                      <strong>Eklenme Tarihi:</strong> ${new Date().toLocaleString('tr-TR')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            `
+
+            // Send to all admins
+            for (const admin of admins) {
+              try {
+                await transporter.sendMail({
+                  from: `"${mailSettings.fromName}" <${mailSettings.fromEmail}>`,
+                  to: admin.email,
+                  subject: 'Yeni Envanter Eklendi',
+                  html: emailContent
+                })
+              } catch (mailError) {
+                console.error(`Mail gönderilemedi (${admin.email}):`, mailError)
+              }
+            }
+            console.log(`Yeni envanter bildirimi gönderildi: ${admins.length} kişiye`)
+          }
+        } catch (error) {
+          console.error('Envanter bildirimi gönderilemedi:', error)
+          // Don't fail the request if email fails
+        }
+      }
+
       const { _id, ...result } = envanter
       return handleCORS(NextResponse.json(result))
     }

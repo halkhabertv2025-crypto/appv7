@@ -431,12 +431,22 @@ const Calisanlar = ({ user }) => {
     setShowDialog(true)
   }
 
+  // Calculate employee counts
+  const aktifCount = calisanlar.filter(c => c.durum === 'Aktif').length
+  const pasifCount = calisanlar.filter(c => c.durum !== 'Aktif').length
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Çalışanlar</h2>
-          <p className="text-gray-500">Çalışan listesi ve yönetimi</p>
+          <p className="text-gray-500">
+            Çalışan listesi ve yönetimi
+            <span className="ml-2 text-sm">
+              (<span className="text-green-600 font-medium">{aktifCount} Aktif</span>
+              {pasifCount > 0 && <span className="text-gray-400"> / {pasifCount} Pasif</span>})
+            </span>
+          </p>
         </div>
         <Button onClick={openCreateDialog} className="bg-teal-500 hover:bg-teal-600">
           <Plus size={20} className="mr-2" />
