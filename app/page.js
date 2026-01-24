@@ -70,6 +70,7 @@ export default function App() {
           user={user}
           onLogout={handleLogout}
           onMenuClick={() => setSidebarOpen(true)}
+          onNavigate={(page) => setCurrentPage(page)}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 w-full">
           {currentPage === 'dashboard' && <Dashboard user={user} />}

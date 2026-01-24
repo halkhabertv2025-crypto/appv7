@@ -563,7 +563,8 @@ const Envanterler = ({ user }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user?.id,
-          userName: user?.adSoyad
+          userName: user?.adSoyad,
+          userRole: user?.adminYetkisi ? 'Admin' : (user?.yoneticiYetkisi ? 'Yönetici' : 'Çalışan')
         })
       })
 
@@ -709,7 +710,7 @@ const Envanterler = ({ user }) => {
                   disabled={selectedEnvanterIds.size === 0}
                 >
                   <Printer className="mr-2" size={16} />
-                  Seçilenleri Yazdır ({selectedEnvanterIds.size})
+                  Seçilenleri Qr Kod Yazdır ({selectedEnvanterIds.size})
                 </Button>
               </div>
               <table className="w-full">

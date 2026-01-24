@@ -884,7 +884,7 @@ async function handleRoute(request, { params }) {
 
       const result = await db.collection('calisanlar').updateOne(
         { id, deletedAt: null },
-        { $set: { deletedAt: new Date() } }
+        { $set: { deletedAt: new Date(), deletedBy: body.userName || 'Bilinmiyor', deletedByRole: body.userRole || '' } }
       )
 
       if (result.matchedCount === 0) {
@@ -1328,7 +1328,7 @@ async function handleRoute(request, { params }) {
 
       const result = await db.collection('envanterler').updateOne(
         { id, deletedAt: null },
-        { $set: { deletedAt: new Date() } }
+        { $set: { deletedAt: new Date(), deletedBy: body.userName || 'Bilinmiyor', deletedByRole: body.userRole || '' } }
       )
 
       if (result.matchedCount === 0) {
@@ -2704,6 +2704,118 @@ async function handleRoute(request, { params }) {
         console.error('Mail test error:', error)
         return handleCORS(NextResponse.json(
           { error: `Mail gönderilemedi: ${error.message}` },
+          { status: 500 }
+        ))
+      }
+    }
+
+    // ============= BACKUP SYSTEM =============
+    if (route === '/backup/stats' && method === 'GET') {
+      const [envanterler, calisanlar, zimmetler, departmanlar, envanterTipleri, auditLogs, digitalAssets, digitalAssetCategories] = await Promise.all([
+        db.collection('envanterler').countDocuments({ deletedAt: null }),
+        db.collection('calisanlar').countDocuments({ deletedAt: null }),
+        db.collection('zimmetler').countDocuments({ deletedAt: null }),
+        db.collection('departmanlar').countDocuments({ deletedAt: null }),
+        db.collection('envanter_tipleri').countDocuments({ deletedAt: null }),
+        db.collection('audit_logs').countDocuments({}),
+        db.collection('dijital_varliklar').countDocuments({ deletedAt: null }),
+        db.collection('dijital_varlik_kategorileri').countDocuments({ deletedAt: null })
+      ])
+
+      return handleCORS(NextResponse.json({
+        envanterler,
+        calisanlar,
+        zimmetler,
+        departmanlar,
+        envanterTipleri,
+        auditLogs,
+        digitalAssets,
+        digitalAssetCategories
+      }))
+    }
+
+    if (route === '/backup/export' && method === 'GET') {
+      const [envanterler, calisanlar, zimmetler, departmanlar, envanterTipleri, auditLogs, dijitalVarliklar, dijitalKategoriler, bakimKayitlari] = await Promise.all([
+        db.collection('envanterler').find({ deletedAt: null }).toArray(),
+        db.collection('calisanlar').find({ deletedAt: null }).toArray(),
+        db.collection('zimmetler').find({ deletedAt: null }).toArray(),
+        db.collection('departmanlar').find({ deletedAt: null }).toArray(),
+        db.collection('envanter_tipleri').find({ deletedAt: null }).toArray(),
+        db.collection('audit_logs').find({}).sort({ createdAt: -1 }).limit(1000).toArray(),
+        db.collection('dijital_varliklar').find({ deletedAt: null }).toArray(),
+        db.collection('dijital_varlik_kategorileri').find({ deletedAt: null }).toArray(),
+        db.collection('bakim_kayitlari').find({ deletedAt: null }).toArray()
+      ])
+
+      // Remove MongoDB _id from all documents
+      const cleanIds = (arr) => arr.map(({ _id, ...rest }) => rest)
+
+      return handleCORS(NextResponse.json({
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        data: {
+          envanterler: cleanIds(envanterler),
+          calisanlar: cleanIds(calisanlar),
+          zimmetler: cleanIds(zimmetler),
+          departmanlar: cleanIds(departmanlar),
+          envanterTipleri: cleanIds(envanterTipleri),
+          auditLogs: cleanIds(auditLogs),
+          dijitalVarliklar: cleanIds(dijitalVarliklar),
+          dijitalKategoriler: cleanIds(dijitalKategoriler),
+          bakimKayitlari: cleanIds(bakimKayitlari)
+        }
+      }))
+    }
+
+    if (route === '/backup/import' && method === 'POST') {
+      const body = await request.json()
+
+      if (!body.version || !body.data) {
+        return handleCORS(NextResponse.json(
+          { error: "Geçersiz yedek dosyası formatı" },
+          { status: 400 }
+        ))
+      }
+
+      const { data } = body
+      let totalImported = 0
+
+      try {
+        // Import each collection (upsert by id)
+        const collections = [
+          { name: 'envanterler', data: data.envanterler },
+          { name: 'calisanlar', data: data.calisanlar },
+          { name: 'zimmetler', data: data.zimmetler },
+          { name: 'departmanlar', data: data.departmanlar },
+          { name: 'envanter_tipleri', data: data.envanterTipleri },
+          { name: 'dijital_varliklar', data: data.dijitalVarliklar },
+          { name: 'dijital_varlik_kategorileri', data: data.dijitalKategoriler },
+          { name: 'bakim_kayitlari', data: data.bakimKayitlari }
+        ]
+
+        for (const col of collections) {
+          if (col.data && Array.isArray(col.data) && col.data.length > 0) {
+            for (const item of col.data) {
+              if (item.id) {
+                await db.collection(col.name).updateOne(
+                  { id: item.id },
+                  { $set: item },
+                  { upsert: true }
+                )
+                totalImported++
+              }
+            }
+          }
+        }
+
+        return handleCORS(NextResponse.json({
+          success: true,
+          imported: { total: totalImported }
+        }))
+      } catch (error) {
+        console.error('Backup import error:', error)
+        return handleCORS(NextResponse.json(
+          { error: `İçe aktarma hatası: ${error.message}` },
           { status: 500 }
         ))
       }

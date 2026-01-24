@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { FileText, Search, Filter, RotateCcw, Package, Users, Download, Database, AlertCircle, Key, Mail, Send } from 'lucide-react'
+import { FileText, Search, Filter, RotateCcw, Package, Users, Download, Database, AlertCircle, Key, Mail, Send, Upload } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 export default function Ayarlar() {
@@ -47,6 +47,7 @@ export default function Ayarlar() {
   const [mailLoading, setMailLoading] = useState(false)
   const [testEmail, setTestEmail] = useState('')
   const [testLoading, setTestLoading] = useState(false)
+  const [importLoading, setImportLoading] = useState(false)
 
   useEffect(() => {
     fetchAuditLogs()
@@ -144,7 +145,10 @@ export default function Ayarlar() {
     'RESTORE_EMPLOYEE': 'Çalışan Geri Yüklendi',
     'ASSIGN_ROLE': 'Rol Atandı',
     'IMPORT_INVENTORY': 'Envanter İçe Aktarıldı',
-    'EXPORT_INVENTORY': 'Envanter Dışa Aktarıldı'
+    'EXPORT_INVENTORY': 'Envanter Dışa Aktarıldı',
+    'CREATE_MAINTENANCE': 'Bakım Kaydı Oluşturuldu',
+    'UPDATE_MAINTENANCE': 'Bakım Kaydı Güncellendi',
+    'DELETE_MAINTENANCE': 'Bakım Kaydı Silindi'
   }
 
   const entityTypeLabels = {
@@ -153,7 +157,8 @@ export default function Ayarlar() {
     'Zimmet': 'Zimmet',
     'Department': 'Departman',
     'User': 'Kullanıcı',
-    'DigitalAsset': 'Dijital Varlık'
+    'DigitalAsset': 'Dijital Varlık',
+    'Maintenance': 'Bakım/Onarım'
   }
 
   const openDetailDialog = (log) => {
@@ -279,6 +284,49 @@ export default function Ayarlar() {
       toast({ title: 'Hata', description: 'Yedekleme sırasında bir hata oluştu', variant: 'destructive' })
     } finally {
       setExportLoading(false)
+    }
+  }
+
+  const handleBackupImport = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setImportLoading(true)
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+
+      // Validate backup format
+      if (!data.exportDate || !data.version) {
+        toast({ title: 'Hata', description: 'Geçersiz yedek dosyası formatı', variant: 'destructive' })
+        return
+      }
+
+      const response = await fetch('/api/backup/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        toast({ title: 'Hata', description: result.error || 'İçe aktarma başarısız', variant: 'destructive' })
+        return
+      }
+
+      toast({
+        title: 'Başarılı',
+        description: `Yedek başarıyla içe aktarıldı. ${result.imported?.total || 0} kayıt yüklendi.`
+      })
+
+      // Refresh stats
+      fetchBackupStats()
+    } catch (error) {
+      toast({ title: 'Hata', description: 'Yedek dosyası okunamadı veya geçersiz format', variant: 'destructive' })
+    } finally {
+      setImportLoading(false)
+      event.target.value = '' // Reset file input
     }
   }
 
@@ -485,6 +533,11 @@ export default function Ayarlar() {
                           </div>
                           <div className="text-xs text-red-500">
                             Silinme: {new Date(env.deletedAt).toLocaleDateString('tr-TR')}
+                            {env.deletedBy && (
+                              <div className="mt-1 font-medium text-gray-700">
+                                *Eylemi Gerçekleştiren: {env.deletedBy} {env.deletedByRole ? `(${env.deletedByRole})` : ''}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <Button size="sm" variant="outline" onClick={() => restoreEnvanter(env.id)}>
@@ -520,6 +573,11 @@ export default function Ayarlar() {
                           </div>
                           <div className="text-xs text-red-500">
                             Silinme: {new Date(cal.deletedAt).toLocaleDateString('tr-TR')}
+                            {cal.deletedBy && (
+                              <div className="mt-1 font-medium text-gray-700">
+                                *Eylemi Gerçekleştiren: {cal.deletedBy} {cal.deletedByRole ? `(${cal.deletedByRole})` : ''}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <Button size="sm" variant="outline" onClick={() => restoreCalisan(cal.id)}>
@@ -809,6 +867,46 @@ export default function Ayarlar() {
                   <p className="text-xs text-gray-500 text-center mt-2">
                     Yedek dosyası: sistem_yedegi_[tarih]_[zaman].json
                   </p>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <h4 className="font-medium text-sm text-gray-700 mb-3">Yedek İçe Aktar</h4>
+                  <div className="flex items-start gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+                    <AlertCircle className="text-yellow-600 mt-0.5" size={20} />
+                    <div className="text-sm text-yellow-800">
+                      <p className="font-medium mb-1">Dikkat</p>
+                      <p>Yedek içe aktarma, mevcut verilerin üzerine yazar. Bu işlem geri alınamaz.</p>
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleBackupImport}
+                    className="hidden"
+                    id="backup-import"
+                  />
+                  <label htmlFor="backup-import">
+                    <Button
+                      variant="outline"
+                      className="w-full cursor-pointer"
+                      disabled={importLoading}
+                      asChild
+                    >
+                      <span>
+                        {importLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                            İçe Aktarılıyor...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2" size={20} />
+                            Yedek Dosyası Seç
+                          </>
+                        )}
+                      </span>
+                    </Button>
+                  </label>
                 </div>
               </CardContent>
             </Card>

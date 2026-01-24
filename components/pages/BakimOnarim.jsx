@@ -22,6 +22,7 @@ const BakimOnarim = ({ user }) => {
     const [searchTerm, setSearchTerm] = useState('')
     const [filterDurum, setFilterDurum] = useState('all')
     const [filterTip, setFilterTip] = useState('all')
+    const [envanterSearch, setEnvanterSearch] = useState('')
     const [formData, setFormData] = useState({
         envanterId: '',
         arizaTuru: '',
@@ -171,6 +172,7 @@ const BakimOnarim = ({ user }) => {
             notlar: ''
         })
         setEditingKayit(null)
+        setEnvanterSearch('')
     }
 
     const openEditDialog = (kayit) => {
@@ -278,7 +280,7 @@ const BakimOnarim = ({ user }) => {
                     <Card className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Toplam Maliyet</p>
+                                <p className="text-sm text-gray-500">Bugüne Kadar Toplam Maliyet</p>
                                 <p className="text-xl font-bold text-gray-800">
                                     {formatCurrency(stats.toplamMaliyet?.TRY, 'TRY')}
                                 </p>
@@ -411,22 +413,60 @@ const BakimOnarim = ({ user }) => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
                                 <Label htmlFor="envanterId">Envanter *</Label>
-                                <Select
-                                    value={formData.envanterId}
-                                    onValueChange={(value) => setFormData({ ...formData, envanterId: value })}
-                                    required
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Envanter seçin" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {envanterler.map(env => (
-                                            <SelectItem key={env.id} value={env.id}>
-                                                {env.envanterTipiAd} {env.marka} {env.model} ({env.seriNumarasi})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <div className="space-y-2">
+                                    <Input
+                                        placeholder="Envanter ara (marka, model, seri no)..."
+                                        value={envanterSearch}
+                                        onChange={(e) => setEnvanterSearch(e.target.value)}
+                                    />
+                                    <Select
+                                        value={formData.envanterId}
+                                        onValueChange={(value) => {
+                                            setFormData({ ...formData, envanterId: value })
+                                            setEnvanterSearch('') // Clear search after selection
+                                        }}
+                                        required
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Envanter seçin">
+                                                {formData.envanterId && (() => {
+                                                    const selected = envanterler.find(e => e.id === formData.envanterId)
+                                                    return selected ? `${selected.envanterTipiAd} ${selected.marka} ${selected.model}` : 'Envanter seçin'
+                                                })()}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-60">
+                                            {envanterler
+                                                .filter(env => {
+                                                    if (!envanterSearch) return true
+                                                    const searchLower = envanterSearch.toLowerCase()
+                                                    return (
+                                                        env.marka?.toLowerCase().includes(searchLower) ||
+                                                        env.model?.toLowerCase().includes(searchLower) ||
+                                                        env.seriNumarasi?.toLowerCase().includes(searchLower) ||
+                                                        env.envanterTipiAd?.toLowerCase().includes(searchLower)
+                                                    )
+                                                })
+                                                .slice(0, 50)
+                                                .map(env => (
+                                                    <SelectItem key={env.id} value={env.id}>
+                                                        {env.envanterTipiAd} {env.marka} {env.model} ({env.seriNumarasi})
+                                                    </SelectItem>
+                                                ))}
+                                            {envanterSearch && envanterler.filter(env => {
+                                                const searchLower = envanterSearch.toLowerCase()
+                                                return (
+                                                    env.marka?.toLowerCase().includes(searchLower) ||
+                                                    env.model?.toLowerCase().includes(searchLower) ||
+                                                    env.seriNumarasi?.toLowerCase().includes(searchLower) ||
+                                                    env.envanterTipiAd?.toLowerCase().includes(searchLower)
+                                                )
+                                            }).length === 0 && (
+                                                    <div className="py-2 px-2 text-sm text-gray-500">Sonuç bulunamadı</div>
+                                                )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
                             <div>

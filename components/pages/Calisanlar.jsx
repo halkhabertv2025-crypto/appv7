@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useDeferredValue } from 'react'
+import { useEffect, useState, useDeferredValue, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -150,7 +150,8 @@ const Calisanlar = ({ user }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user?.id,
-          userName: user?.adSoyad
+          userName: user?.adSoyad,
+          userRole: user?.adminYetkisi ? 'Admin' : (user?.yoneticiYetkisi ? 'Yönetici' : 'Çalışan')
         })
       })
 
@@ -480,7 +481,7 @@ const Calisanlar = ({ user }) => {
                   disabled={selectedCalisanIds.size === 0}
                 >
                   <Printer className="mr-2" size={16} />
-                  Seçilenleri Yazdır ({selectedCalisanIds.size})
+                  Seçilenleri Qr Kod Yazdır ({selectedCalisanIds.size})
                 </Button>
               </div>
               <table className="w-full">
@@ -616,7 +617,8 @@ const Calisanlar = ({ user }) => {
                 <Input
                   id="adSoyad"
                   value={formData.adSoyad}
-                  onChange={(e) => setFormData({ ...formData, adSoyad: toTitleCase(e.target.value) })}
+                  onChange={(e) => setFormData(prev => ({ ...prev, adSoyad: e.target.value }))}
+                  onBlur={(e) => setFormData(prev => ({ ...prev, adSoyad: toTitleCase(prev.adSoyad) }))}
                   required
                 />
               </div>

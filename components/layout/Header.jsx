@@ -9,8 +9,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Settings } from 'lucide-react'
 
-const Header = ({ user, onLogout, onMenuClick }) => {
+const Header = ({ user, onLogout, onMenuClick, onNavigate }) => {
   const getInitials = (name) => {
     return name
       .split(' ')
@@ -59,7 +60,7 @@ const Header = ({ user, onLogout, onMenuClick }) => {
                 <div className="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center text-white">
                   <span className="text-sm font-semibold">{getInitials(user?.adSoyad || 'U')}</span>
                 </div>
-                <div className="text-left">
+                <div className="text-left hidden sm:block">
                   <div className="text-sm font-medium">{user?.adSoyad}</div>
                   <div className="text-xs text-gray-500">{user?.departmanAd}</div>
                 </div>
@@ -67,11 +68,14 @@ const Header = ({ user, onLogout, onMenuClick }) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onNavigate?.('benim-sayfam')}>
                 <User size={16} className="mr-2" />
-                Profil
+                Benim Sayfam
               </DropdownMenuItem>
-              <DropdownMenuItem>Ayarlar</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onNavigate?.('ayarlar')}>
+                <Settings size={16} className="mr-2" />
+                Ayarlar
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onLogout} className="text-red-600">
                 <LogOut size={16} className="mr-2" />
