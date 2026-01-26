@@ -54,22 +54,6 @@ const Calisanlar = ({ user }) => {
     return null
   }
 
-  useEffect(() => {
-    fetchCalisanlar()
-    fetchDepartmanlar()
-  }, [fetchCalisanlar, fetchDepartmanlar])
-
-  const deferredSearchTerm = useDeferredValue(searchTerm)
-
-  useEffect(() => {
-    const filtered = calisanlar.filter(cal =>
-      cal.adSoyad.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
-      cal.email.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
-      cal.departmanAd.toLowerCase().includes(deferredSearchTerm.toLowerCase())
-    )
-    setFilteredCalisanlar(filtered)
-  }, [deferredSearchTerm, calisanlar])
-
   const fetchCalisanlar = useCallback(async () => {
     try {
       const response = await fetch('/api/calisanlar')
@@ -92,6 +76,22 @@ const Calisanlar = ({ user }) => {
       console.error('Departmanlar yüklenemedi')
     }
   }, [])
+
+  useEffect(() => {
+    fetchCalisanlar()
+    fetchDepartmanlar()
+  }, [fetchCalisanlar, fetchDepartmanlar])
+
+  const deferredSearchTerm = useDeferredValue(searchTerm)
+
+  useEffect(() => {
+    const filtered = calisanlar.filter(cal =>
+      cal.adSoyad.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+      cal.email.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+      cal.departmanAd.toLowerCase().includes(deferredSearchTerm.toLowerCase())
+    )
+    setFilteredCalisanlar(filtered)
+  }, [deferredSearchTerm, calisanlar])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
