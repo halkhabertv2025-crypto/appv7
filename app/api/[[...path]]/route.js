@@ -1355,6 +1355,87 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json({ success: true }))
     }
 
+    // ============= ENVANTER GEÇMİŞİ =============
+    if (route.match(/^\/envanterler\/[^/]+\/gecmis$/) && method === 'GET') {
+      const id = route.split('/')[2]
+
+      // Check if envanter exists
+      const envanter = await db.collection('envanterler').findOne({ id, deletedAt: null })
+      if (!envanter) {
+        return handleCORS(NextResponse.json(
+          { error: "Envanter bulunamadı" },
+          { status: 404 }
+        ))
+      }
+
+      // Get all zimmet records for this inventory (including returned ones)
+      const zimmetler = await db.collection('zimmetler')
+        .find({ envanterId: id, deletedAt: null })
+        .sort({ zimmetTarihi: -1 })
+        .toArray()
+
+      // Enrich zimmet records with employee and department info
+      const enrichedZimmetler = await Promise.all(
+        zimmetler.map(async (zimmet) => {
+          const calisan = await db.collection('calisanlar').findOne({ id: zimmet.calisanId })
+          const departman = calisan ? await db.collection('departmanlar').findOne({ id: calisan.departmanId }) : null
+          
+          // Get iade alan yetkili if exists
+          let iadeAlanYetkili = null
+          if (zimmet.iadeAlanYetkiliId) {
+            const yetkili = await db.collection('calisanlar').findOne({ id: zimmet.iadeAlanYetkiliId })
+            if (yetkili) {
+              iadeAlanYetkili = {
+                id: yetkili.id,
+                adSoyad: yetkili.adSoyad
+              }
+            }
+          }
+
+          return {
+            id: zimmet.id,
+            calisanAd: calisan?.adSoyad || 'Bilinmiyor',
+            departmanAd: departman?.ad || 'Bilinmiyor',
+            zimmetTarihi: zimmet.zimmetTarihi,
+            iadeTarihi: zimmet.iadeTarihi,
+            durum: zimmet.durum,
+            aciklama: zimmet.aciklama,
+            iadeAlanYetkili,
+            createdAt: zimmet.createdAt
+          }
+        })
+      )
+
+      // Get audit logs for this inventory
+      const auditLogs = await db.collection('audit_logs')
+        .find({ 
+          entityId: id,
+          entityType: 'Inventory'
+        })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .toArray()
+
+      const formattedLogs = auditLogs.map(log => ({
+        id: log.id,
+        actionType: log.actionType,
+        actorUserName: log.actorUserName,
+        details: log.details,
+        createdAt: log.createdAt
+      }))
+
+      return handleCORS(NextResponse.json({
+        envanter: {
+          id: envanter.id,
+          marka: envanter.marka,
+          model: envanter.model,
+          seriNumarasi: envanter.seriNumarasi
+        },
+        zimmetGecmisi: enrichedZimmetler,
+        islemLoglari: formattedLogs
+      }))
+    }
+
     // ============= ZİMMETLER =============
     if (route === '/zimmetler' && method === 'GET') {
       const zimmetler = await db.collection('zimmetler')

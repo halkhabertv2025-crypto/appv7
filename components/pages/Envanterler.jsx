@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus, Package, ChevronDown, ChevronRight, QrCode, Printer } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus, Package, ChevronDown, ChevronRight, QrCode, Printer, History } from 'lucide-react'
 import QRCode from 'qrcode'
 import { useToast } from '@/hooks/use-toast'
 import { cn, toTitleCase } from '@/lib/utils'
@@ -59,6 +59,10 @@ const Envanterler = ({ user }) => {
   const [showQrDialog, setShowQrDialog] = useState(false)
   const [qrCodeUrl, setQrCodeUrl] = useState('')
   const [selectedEnvanterForQr, setSelectedEnvanterForQr] = useState(null)
+  const [showGecmisDialog, setShowGecmisDialog] = useState(false)
+  const [selectedEnvanterForGecmis, setSelectedEnvanterForGecmis] = useState(null)
+  const [envanterGecmisi, setEnvanterGecmisi] = useState({ zimmetGecmisi: [], islemLoglari: [] })
+  const [gecmisLoading, setGecmisLoading] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -136,6 +140,34 @@ const Envanterler = ({ user }) => {
     } catch (error) {
       console.error('Aksesuarlar yüklenemedi')
     }
+  }
+
+  // İşlem geçmişi fonksiyonları
+  const fetchEnvanterGecmisi = async (envanterId) => {
+    setGecmisLoading(true)
+    try {
+      const response = await fetch(`/api/envanterler/${envanterId}/gecmis`)
+      const data = await response.json()
+      if (response.ok) {
+        setEnvanterGecmisi({
+          zimmetGecmisi: data.zimmetGecmisi || [],
+          islemLoglari: data.islemLoglari || []
+        })
+      } else {
+        toast({ title: 'Hata', description: 'Geçmiş yüklenemedi', variant: 'destructive' })
+      }
+    } catch (error) {
+      console.error('Geçmiş yüklenemedi:', error)
+      toast({ title: 'Hata', description: 'Geçmiş yüklenemedi', variant: 'destructive' })
+    } finally {
+      setGecmisLoading(false)
+    }
+  }
+
+  const openGecmisDialog = async (envanter) => {
+    setSelectedEnvanterForGecmis(envanter)
+    setShowGecmisDialog(true)
+    await fetchEnvanterGecmisi(envanter.id)
   }
 
   const toggleRow = async (envanterId) => {
@@ -787,6 +819,14 @@ const Envanterler = ({ user }) => {
                             <Button
                               variant="outline"
                               size="sm"
+                              onClick={() => openGecmisDialog(envanter)}
+                              title="İşlem Geçmişi"
+                            >
+                              <History size={16} />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => openEditDialog(envanter)}
                             >
                               <Pencil size={16} />
@@ -1234,6 +1274,126 @@ const Envanterler = ({ user }) => {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* İşlem Geçmişi Dialog */}
+      <Dialog open={showGecmisDialog} onOpenChange={setShowGecmisDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <History className="mr-2" size={20} />
+              İşlem Geçmişi
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedEnvanterForGecmis && (
+            <div className="p-3 bg-gray-50 rounded-lg mb-4">
+              <div className="text-sm">
+                <span className="font-medium">{selectedEnvanterForGecmis.envanterTipiAd}</span>
+                {' '}{selectedEnvanterForGecmis.marka} {selectedEnvanterForGecmis.model}
+              </div>
+              <div className="text-xs text-gray-500 font-mono mt-1">
+                Seri No: {selectedEnvanterForGecmis.seriNumarasi}
+              </div>
+            </div>
+          )}
+
+          <div className="overflow-y-auto max-h-[50vh]">
+            {gecmisLoading ? (
+              <div className="text-center py-8 text-gray-500">Yükleniyor...</div>
+            ) : (
+              <div className="space-y-4">
+                {/* Zimmet Geçmişi */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                    <span className="w-2 h-2 bg-teal-500 rounded-full mr-2"></span>
+                    Zimmet Geçmişi
+                  </h4>
+                  
+                  {envanterGecmisi.zimmetGecmisi.length > 0 ? (
+                    <div className="space-y-3">
+                      {envanterGecmisi.zimmetGecmisi.map((zimmet, index) => (
+                        <div 
+                          key={zimmet.id || index} 
+                          className={cn(
+                            "p-4 rounded-lg border-l-4",
+                            zimmet.durum === 'Aktif' 
+                              ? "bg-green-50 border-green-500" 
+                              : "bg-gray-50 border-gray-300"
+                          )}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-medium text-gray-800">
+                                {zimmet.calisanAd}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {zimmet.departmanAd}
+                              </div>
+                            </div>
+                            <span className={cn(
+                              "px-2 py-1 rounded text-xs font-medium",
+                              zimmet.durum === 'Aktif' 
+                                ? "bg-green-100 text-green-800" 
+                                : "bg-gray-100 text-gray-600"
+                            )}>
+                              {zimmet.durum}
+                            </span>
+                          </div>
+                          
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-gray-500">Zimmet Tarihi:</span>
+                              <span className="ml-2 font-medium">
+                                {zimmet.zimmetTarihi 
+                                  ? new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')
+                                  : '-'
+                                }
+                              </span>
+                            </div>
+                            {zimmet.iadeTarihi && (
+                              <div>
+                                <span className="text-gray-500">İade Tarihi:</span>
+                                <span className="ml-2 font-medium">
+                                  {new Date(zimmet.iadeTarihi).toLocaleDateString('tr-TR')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {zimmet.iadeAlanYetkili && (
+                            <div className="mt-2 text-sm">
+                              <span className="text-gray-500">İade Alan:</span>
+                              <span className="ml-2 font-medium text-gray-700">
+                                {zimmet.iadeAlanYetkili.adSoyad}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {zimmet.aciklama && (
+                            <div className="mt-2 text-sm text-gray-600 italic">
+                              "{zimmet.aciklama}"
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-400 bg-gray-50 rounded-lg">
+                      Henüz zimmet geçmişi bulunmuyor
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowGecmisDialog(false)}>
+              Kapat
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
