@@ -1385,6 +1385,74 @@ const Envanterler = ({ user }) => {
                     </div>
                   )}
                 </div>
+
+                {/* İşlem Logları */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                    İşlem Logları
+                  </h4>
+                  
+                  {envanterGecmisi.islemLoglari.length > 0 ? (
+                    <div className="space-y-3">
+                      {envanterGecmisi.islemLoglari.map((log) => (
+                        <div key={log.id} className="p-3 bg-white border rounded-lg text-sm shadow-sm relative overflow-hidden">
+                           <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium text-gray-800">
+                              {log.actionType === 'CREATE_INVENTORY' && 'Envanter Oluşturuldu'}
+                              {log.actionType === 'UPDATE_INVENTORY' && 'Envanter Güncellendi'}
+                              {log.actionType === 'DELETE_INVENTORY' && 'Envanter Silindi'}
+                              {log.actionType === 'CREATE_ZIMMET' && 'Zimmetlendi'}
+                              {log.actionType === 'RETURN_ZIMMET' && 'İade Alındı'}
+                              {log.actionType === 'UPDATE_EMPLOYEE' && 'Çalışan Güncellendi'}
+                              {!['CREATE_INVENTORY', 'UPDATE_INVENTORY', 'DELETE_INVENTORY', 'CREATE_ZIMMET', 'RETURN_ZIMMET', 'UPDATE_EMPLOYEE'].includes(log.actionType) && (log.actionType || 'İşlem')}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(log.createdAt).toLocaleString('tr-TR')}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 mb-1">
+                             <span className="font-medium text-gray-600">{log.actorUserName}</span> tarafından
+                          </div>
+                          
+                          {/* Detaylar */}
+                          {log.details?.degisiklikler ? (
+                            <div className="mt-2 bg-gray-50 p-2 rounded border border-gray-100">
+                              <div className="text-xs font-medium text-gray-500 mb-1">Değişiklikler:</div>
+                              {Object.entries(log.details.degisiklikler).map(([key, val]) => (
+                                <div key={key} className="text-xs grid grid-cols-[auto,auto,1fr] gap-2 items-center mb-1 last:mb-0">
+                                  <span className="text-gray-600 font-medium">{key}</span>
+                                  <span className="text-gray-400">→</span>
+                                  <span className="truncate" title={`${val.onceki} -> ${val.yeni}`}>
+                                    <span className="text-red-400 line-through mr-1 opacity-75">{val.onceki ? val.onceki.toString() : '(boş)'}</span>
+                                    <span className="text-green-600 font-medium">{val.yeni ? val.yeni.toString() : '(boş)'}</span>
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                             log.details && Object.keys(log.details).length > 0 && (
+                               <div className="mt-1 text-xs text-gray-400 truncate">
+                                 {Object.entries(log.details)
+                                   .filter(([k]) => k !== 'degisiklikler')
+                                   .map(([k, v]) => {
+                                     if (k === 'inventoryId') {
+                                       return `Envanter: ${selectedEnvanterForGecmis.marka} ${selectedEnvanterForGecmis.model}`
+                                     }
+                                     return `${k}: ${v}`
+                                   }).join(', ')}
+                               </div>
+                             )
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-400 bg-gray-50 rounded-lg">
+                      Henüz işlem kaydı bulunmuyor
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

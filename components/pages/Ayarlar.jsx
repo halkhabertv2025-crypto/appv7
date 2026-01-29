@@ -461,7 +461,7 @@ export default function Ayarlar() {
                             <td className="py-3 px-4 text-sm">
                               {entityTypeLabels[log.entityType] || log.entityType}
                             </td>
-                            <td className="py-3 px-4 text-sm font-mono text-xs">
+                            <td className="py-3 px-4 font-mono text-xs">
                               {log.entityId.substring(0, 8)}...
                             </td>
                             <td className="py-3 px-4 text-right">
@@ -1047,8 +1047,14 @@ export default function Ayarlar() {
                             .filter(([k]) => !['degisiklikler', 'employeeName', 'departmentName', 'assetName', 'marka', 'model', 'seriNumarasi'].includes(k))
                             .map(([key, value]) => (
                               <div key={key} className="text-sm">
-                                <strong className="text-gray-600">{key}:</strong>{' '}
-                                <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                                <strong className="text-gray-600">{
+                                  key === 'inventoryId' ? 'Envanter' : key
+                                }:</strong>{' '}
+                                {key === 'inventoryId' && selectedLog.inventoryInfo ? (
+                                  <span>{selectedLog.inventoryInfo.marka} {selectedLog.inventoryInfo.model} ({selectedLog.inventoryInfo.seriNumarasi})</span>
+                                ) : (
+                                  <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                                )}
                               </div>
                             ))
                           }

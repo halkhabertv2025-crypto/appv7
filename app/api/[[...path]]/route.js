@@ -1370,7 +1370,7 @@ async function handleRoute(request, { params }) {
 
       // Get all zimmet records for this inventory (including returned ones)
       const zimmetler = await db.collection('zimmetler')
-        .find({ envanterId: id, deletedAt: null })
+        .find({ envanterId: id })
         .sort({ zimmetTarihi: -1 })
         .toArray()
 
@@ -1407,10 +1407,16 @@ async function handleRoute(request, { params }) {
       )
 
       // Get audit logs for this inventory
+      const zimmetIds = zimmetler.map(z => z.id)
+
+      // Get audit logs for this inventory AND its zimmet records AND referenced logs
       const auditLogs = await db.collection('audit_logs')
         .find({ 
-          entityId: id,
-          entityType: 'Inventory'
+          $or: [
+            { entityId: id, entityType: 'Inventory' },
+            { entityId: { $in: zimmetIds }, entityType: 'Zimmet' },
+            { "details.inventoryId": id }
+          ]
         })
         .sort({ createdAt: -1 })
         .limit(50)
@@ -1537,6 +1543,7 @@ async function handleRoute(request, { params }) {
         'Zimmet',
         zimmet.id,
         {
+          inventoryId: body.envanterId, // Add for easier querying
           employee: calisan?.adSoyad,
           inventoryInfo: `${envanter?.marka} ${envanter?.model}`,
           seriNumarasi: envanter?.seriNumarasi
@@ -1757,6 +1764,45 @@ async function handleRoute(request, { params }) {
         .skip(skip)
         .limit(parseInt(limit))
         .toArray()
+
+      // Enrich logs with inventory details
+      const inventoryIds = new Set()
+      logs.forEach(log => {
+        if (log.entityType === 'Inventory' && log.entityId) {
+          inventoryIds.add(log.entityId)
+        }
+        if (log.details && log.details.inventoryId) {
+          inventoryIds.add(log.details.inventoryId)
+        }
+      })
+
+      if (inventoryIds.size > 0) {
+        const inventories = await db.collection('envanterler')
+          .find({ id: { $in: Array.from(inventoryIds) } })
+          .project({ id: 1, marka: 1, model: 1, seriNumarasi: 1 })
+          .toArray()
+
+        const inventoryMap = new Map()
+        inventories.forEach(inv => {
+          inventoryMap.set(inv.id, inv)
+        })
+
+        // Enrich logs
+        logs.forEach(log => {
+          let relatedInventoryId = null
+          if (log.entityType === 'Inventory') relatedInventoryId = log.entityId
+          if (log.details && log.details.inventoryId) relatedInventoryId = log.details.inventoryId
+
+          if (relatedInventoryId && inventoryMap.has(relatedInventoryId)) {
+            const inv = inventoryMap.get(relatedInventoryId)
+            log.inventoryInfo = {
+               marka: inv.marka,
+               model: inv.model,
+               seriNumarasi: inv.seriNumarasi
+            }
+          }
+        })
+      }
 
       const total = await db.collection('audit_logs').countDocuments(query)
 
