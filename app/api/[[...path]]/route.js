@@ -3701,6 +3701,17 @@ async function handleRoute(request, context) {
 
     // ============= BACKUP SYSTEM =============
     if (route === "/backup/stats" && method === "GET") {
+      // Check admin authorization
+      const authHeader = request.headers.get('x-user-id')
+      if (!authHeader) {
+        return handleCORS(NextResponse.json({ error: "Yetkilendirme gerekli" }, { status: 401 }))
+      }
+
+      const requestingUser = await db.collection('calisanlar').findOne({ id: authHeader, deletedAt: null })
+      if (!requestingUser || (!requestingUser.adminYetkisi && !requestingUser.yoneticiYetkisi)) {
+        return handleCORS(NextResponse.json({ error: "Bu işlem için yetkiniz yok" }, { status: 403 }))
+      }
+
       const [
         envanterler,
         calisanlar,
@@ -3738,6 +3749,16 @@ async function handleRoute(request, context) {
     }
 
     if (route === "/backup/export" && method === "GET") {
+      // Check admin authorization
+      const authHeader = request.headers.get('x-user-id')
+      if (!authHeader) {
+        return handleCORS(NextResponse.json({ error: "Yetkilendirme gerekli" }, { status: 401 }))
+      }
+
+      const requestingUser = await db.collection('calisanlar').findOne({ id: authHeader, deletedAt: null })
+      if (!requestingUser || !requestingUser.adminYetkisi) {
+        return handleCORS(NextResponse.json({ error: "Sadece adminler yedek alabilir" }, { status: 403 }))
+      }
       const [
         envanterler,
         calisanlar,
@@ -3791,6 +3812,17 @@ async function handleRoute(request, context) {
     }
 
     if (route === "/backup/import" && method === "POST") {
+      // Check admin authorization
+      const authHeader = request.headers.get('x-user-id')
+      if (!authHeader) {
+        return handleCORS(NextResponse.json({ error: "Yetkilendirme gerekli" }, { status: 401 }))
+      }
+
+      const requestingUser = await db.collection('calisanlar').findOne({ id: authHeader, deletedAt: null })
+      if (!requestingUser || !requestingUser.adminYetkisi) {
+        return handleCORS(NextResponse.json({ error: "Sadece adminler yedek yükleyebilir" }, { status: 403 }))
+      }
+
       const body = await request.json();
 
       if (!body.version || !body.data) {
