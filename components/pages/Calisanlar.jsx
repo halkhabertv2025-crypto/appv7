@@ -1,16 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useDeferredValue, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Pencil, Trash2, Search, Key, Shield, Eye } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Key, Shield, Eye, QrCode, Printer } from 'lucide-react'
+import { toTitleCase } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Checkbox } from '@/components/ui/checkbox'
 import CalisanDetay from './CalisanDetay'
+import QRCode from 'qrcode'
 
 const Calisanlar = ({ user }) => {
   const [calisanlar, setCalisanlar] = useState([])
@@ -24,6 +26,10 @@ const Calisanlar = ({ user }) => {
   const [selectedCalisan, setSelectedCalisan] = useState(null)
   const [detayCalisan, setDetayCalisan] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showQrDialog, setShowQrDialog] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
+  const [selectedZimmetForQr, setSelectedZimmetForQr] = useState(null)
+  const [selectedCalisanForQr, setSelectedCalisanForQr] = useState(null)
   const [yeniSifre, setYeniSifre] = useState('')
   const [formData, setFormData] = useState({
     adSoyad: '',
@@ -31,26 +37,24 @@ const Calisanlar = ({ user }) => {
     telefon: '',
     departmanId: '',
     durum: 'Aktif',
+    calisanYetkisi: false,
     yoneticiYetkisi: false,
-    adminYetkisi: false
+    adminYetkisi: false,
+    sifre: '',
+    iseGirisTarihi: new Date().toISOString().split('T')[0]
   })
   const { toast } = useToast()
 
-  useEffect(() => {
-    fetchCalisanlar()
-    fetchDepartmanlar()
-  }, [])
+  // Password validation function
+  const validatePassword = (password) => {
+    if (password.length < 8) return 'Şifre en az 8 karakter olmalıdır'
+    if (!/[A-Z]/.test(password)) return 'Şifre en az bir büyük harf içermelidir'
+    if (!/[0-9]/.test(password)) return 'Şifre en az bir rakam içermelidir'
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return 'Şifre en az bir özel karakter içermelidir (!@#$%^&*(),.?":{}|<>)'
+    return null
+  }
 
-  useEffect(() => {
-    const filtered = calisanlar.filter(cal => 
-      cal.adSoyad.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cal.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cal.departmanAd.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    setFilteredCalisanlar(filtered)
-  }, [searchTerm, calisanlar])
-
-  const fetchCalisanlar = async () => {
+  const fetchCalisanlar = useCallback(async () => {
     try {
       const response = await fetch('/api/calisanlar')
       const data = await response.json()
@@ -61,9 +65,9 @@ const Calisanlar = ({ user }) => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
-  const fetchDepartmanlar = async () => {
+  const fetchDepartmanlar = useCallback(async () => {
     try {
       const response = await fetch('/api/departmanlar')
       const data = await response.json()
@@ -71,16 +75,41 @@ const Calisanlar = ({ user }) => {
     } catch (error) {
       console.error('Departmanlar yüklenemedi')
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchCalisanlar()
+    fetchDepartmanlar()
+  }, [fetchCalisanlar, fetchDepartmanlar])
+
+  const deferredSearchTerm = useDeferredValue(searchTerm)
+
+  useEffect(() => {
+    const filtered = calisanlar.filter(cal =>
+      cal.adSoyad.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+      cal.email.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+      cal.departmanAd.toLowerCase().includes(deferredSearchTerm.toLowerCase())
+    )
+    setFilteredCalisanlar(filtered)
+  }, [deferredSearchTerm, calisanlar])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
+    // Validate password for new employees
+    if (!editingCalisan && formData.sifre) {
+      const passwordError = validatePassword(formData.sifre)
+      if (passwordError) {
+        toast({ title: 'Hata', description: passwordError, variant: 'destructive' })
+        return
+      }
+    }
+
     try {
-      const url = editingCalisan 
+      const url = editingCalisan
         ? `/api/calisanlar/${editingCalisan.id}`
         : '/api/calisanlar'
-      
+
       const response = await fetch(url, {
         method: editingCalisan ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,13 +127,13 @@ const Calisanlar = ({ user }) => {
         return
       }
 
-      toast({ 
-        title: 'Başarılı', 
-        description: editingCalisan ? 'Çalışan güncellendi' : 'Çalışan oluşturuldu' 
+      toast({
+        title: 'Başarılı',
+        description: editingCalisan ? 'Çalışan güncellendi' : 'Çalışan oluşturuldu'
       })
-      
+
       setShowDialog(false)
-      setFormData({ adSoyad: '', email: '', telefon: '', departmanId: '', durum: 'Aktif', yoneticiYetkisi: false, adminYetkisi: false })
+      setFormData({ adSoyad: '', email: '', telefon: '', departmanId: '', durum: 'Aktif', calisanYetkisi: false, yoneticiYetkisi: false, adminYetkisi: false, sifre: '', iseGirisTarihi: new Date().toISOString().split('T')[0] })
       setEditingCalisan(null)
       fetchCalisanlar()
     } catch (error) {
@@ -112,7 +141,7 @@ const Calisanlar = ({ user }) => {
     }
   }
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     if (!confirm('Bu çalışanı silmek istediğinize emin misiniz?')) return
 
     try {
@@ -121,7 +150,8 @@ const Calisanlar = ({ user }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user?.id,
-          userName: user?.adSoyad
+          userName: user?.adSoyad,
+          userRole: user?.adminYetkisi ? 'Admin' : (user?.yoneticiYetkisi ? 'Yönetici' : 'Çalışan')
         })
       })
 
@@ -137,7 +167,7 @@ const Calisanlar = ({ user }) => {
     } catch (error) {
       toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
     }
-  }
+  }, [user, fetchCalisanlar, toast])
 
   const handleResetPassword = async () => {
     if (!yeniSifre) {
@@ -166,16 +196,16 @@ const Calisanlar = ({ user }) => {
     }
   }
 
-  const openPasswordDialog = (calisan) => {
+  const openPasswordDialog = useCallback((calisan) => {
     setSelectedCalisan(calisan)
     setYeniSifre('')
     setShowPasswordDialog(true)
-  }
+  }, [])
 
-  const openDetayPanel = (calisan) => {
+  const openDetayPanel = useCallback((calisan) => {
     setDetayCalisan(calisan)
     setShowDetayPanel(true)
-  }
+  }, [])
 
   const closeDetayPanel = () => {
     setShowDetayPanel(false)
@@ -183,7 +213,16 @@ const Calisanlar = ({ user }) => {
     fetchCalisanlar() // Refresh data after potential changes
   }
 
-  const openEditDialog = (calisan) => {
+  const openEditDialog = useCallback((calisan) => {
+    if (calisan.aktifZimmetSayisi > 0) {
+      toast({
+        title: 'İşlem Engellendi',
+        description: 'Üzerinde zimmetli envanter bulunan çalışan düzenlenemez. Önce zimmetleri iade alınız.',
+        variant: 'destructive'
+      })
+      return
+    }
+
     setEditingCalisan(calisan)
     setFormData({
       adSoyad: calisan.adSoyad,
@@ -191,10 +230,200 @@ const Calisanlar = ({ user }) => {
       telefon: calisan.telefon,
       departmanId: calisan.departmanId,
       durum: calisan.durum,
+      calisanYetkisi: calisan.calisanYetkisi || false,
       yoneticiYetkisi: calisan.yoneticiYetkisi || false,
       adminYetkisi: calisan.adminYetkisi || false
     })
     setShowDialog(true)
+  }, [toast])
+
+  const handleQrCode = useCallback(async (calisan) => {
+    try {
+      setSelectedCalisanForQr(calisan)
+
+      const url = `${window.location.origin}/calisan-dogrula/${calisan.id}`
+      const qrDataUrl = await QRCode.toDataURL(url, { width: 200, margin: 1 })
+      setQrCodeUrl(qrDataUrl)
+      setShowQrDialog(true)
+
+    } catch (err) {
+      console.error(err)
+      toast({ title: 'Hata', description: 'QR Kod oluşturulamadı', variant: 'destructive' })
+    }
+  }, [toast])
+
+  const handlePrintQr = () => {
+    const printWindow = window.open('', '', 'width=600,height=600')
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>QR Kod Etiketi</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              display: flex; 
+              justify-content: center; 
+              align-items: center; 
+              height: 100vh; 
+              margin: 0; 
+            }
+            .label-container {
+              text-align: center;
+              border: 2px solid #000;
+              padding: 20px;
+              width: 300px;
+            }
+            .header {
+              font-weight: bold;
+              font-size: 18px;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 5px;
+            }
+            .qr-image {
+              margin: 10px 0;
+            }
+            .info {
+              font-size: 14px;
+              margin-top: 10px;
+              text-align: left;
+            }
+            .info div {
+              margin-bottom: 5px;
+            }
+            .label {
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="label-container">
+            <div class="header">Halk Tv İnsan Kaynakları</div>
+            <img src="${qrCodeUrl}" class="qr-image" width="150" height="150" />
+            <div class="info">
+              <div><span class="label">Çalışanlar Bilgileri:</span> ${selectedCalisanForQr?.adSoyad}</div>
+              <div><span class="label">Departman:</span> ${selectedCalisanForQr?.departmanAd}</div>
+            </div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
+  // Batch Selection Logic
+  const [selectedCalisanIds, setSelectedCalisanIds] = useState(new Set())
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedCalisanIds.size === filteredCalisanlar.length) {
+      setSelectedCalisanIds(new Set())
+    } else {
+      setSelectedCalisanIds(new Set(filteredCalisanlar.map(c => c.id)))
+    }
+  }, [selectedCalisanIds, filteredCalisanlar])
+
+  const toggleSelect = useCallback((id) => {
+    const newSelected = new Set(selectedCalisanIds)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedCalisanIds(newSelected)
+  }, [selectedCalisanIds])
+
+  const handleBatchPrintQr = async () => {
+    if (selectedCalisanIds.size === 0) {
+      toast({ title: 'Hata', description: 'Lütfen en az bir çalışan seçin', variant: 'destructive' })
+      return
+    }
+
+    const selectedCalisanlar = filteredCalisanlar.filter(c => selectedCalisanIds.has(c.id))
+
+    // Generate QR codes for all
+    const qrData = await Promise.all(selectedCalisanlar.map(async (calisan) => {
+      const url = `${window.location.origin}/calisan-dogrula/${calisan.id}`
+      const qrDataUrl = await QRCode.toDataURL(url, { width: 150, margin: 1 })
+      return { ...calisan, qrDataUrl }
+    }))
+
+    const printWindow = window.open('', '', 'width=800,height=800')
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Toplu QR Etiketleri</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0; 
+              padding: 20px;
+              display: flex;
+              flex-wrap: wrap;
+              gap: 10px;
+            }
+            .label-container {
+              text-align: center;
+              border: 1px solid #ccc;
+              padding: 10px;
+              width: 300px;
+              height: auto;
+              page-break-inside: avoid;
+              box-sizing: border-box;
+              margin-bottom: 20px;
+            }
+            .header {
+              font-weight: bold;
+              font-size: 16px;
+              margin-bottom: 8px;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 4px;
+            }
+            .qr-image {
+              margin: 5px 0;
+            }
+            .info {
+              font-size: 12px;
+              margin-top: 5px;
+              text-align: left;
+            }
+            .info div {
+              margin-bottom: 3px;
+            }
+            .label {
+              font-weight: bold;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .label-container {
+                border: 1px dotted #ccc; /* Optional border for print */
+                box-shadow: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${qrData.map(data => `
+            <div class="label-container">
+              <div class="header">Halk Tv İnsan Kaynakları</div>
+              <img src="${data.qrDataUrl}" class="qr-image" width="120" height="120" />
+              <div class="info">
+                <div><span class="label">Çalışan:</span> ${data.adSoyad}</div>
+                <div><span class="label">Departman:</span> ${data.departmanAd}</div>
+              </div>
+            </div>
+          `).join('')}
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
   }
 
   const openCreateDialog = () => {
@@ -203,12 +432,152 @@ const Calisanlar = ({ user }) => {
     setShowDialog(true)
   }
 
+  // Calculate employee counts
+  const aktifCount = calisanlar.filter(c => c.durum === 'Aktif').length
+  const pasifCount = calisanlar.filter(c => c.durum !== 'Aktif').length
+
+  const tableContent = useMemo(() => (
+    <div className="overflow-x-auto">
+      <div className="mb-2 flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleBatchPrintQr}
+          disabled={selectedCalisanIds.size === 0}
+        >
+          <Printer className="mr-2" size={16} />
+          Seçilenleri Qr Kod Yazdır ({selectedCalisanIds.size})
+        </Button>
+      </div>
+      <table className="w-full">
+        <thead>
+          <tr className="border-b">
+            <th className="py-3 px-4 w-10">
+              <Checkbox
+                checked={filteredCalisanlar.length > 0 && selectedCalisanIds.size === filteredCalisanlar.length}
+                onCheckedChange={toggleSelectAll}
+              />
+            </th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Ad Soyad</th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Email</th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Telefon</th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Departman</th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Yönetici</th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Durum</th>
+            <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">İşlemler</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredCalisanlar.map((calisan) => (
+            <tr key={calisan.id} className="border-b hover:bg-gray-50">
+              <td className="py-3 px-4">
+                <Checkbox
+                  checked={selectedCalisanIds.has(calisan.id)}
+                  onCheckedChange={() => toggleSelect(calisan.id)}
+                />
+              </td>
+              <td className="py-3 px-4 text-sm font-medium">
+                <div className="flex items-center gap-2">
+                  <span className={calisan.zimmetliMi ? 'text-red-600 font-semibold' : ''}>
+                    {calisan.adSoyad}
+                  </span>
+                  {calisan.zimmetliMi && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                      {calisan.aktifZimmetSayisi} Zimmet
+                    </span>
+                  )}
+                </div>
+              </td>
+              <td className="py-3 px-4 text-sm text-gray-600">{calisan.email || '-'}</td>
+              <td className="py-3 px-4 text-sm text-gray-600">{calisan.telefon || '-'}</td>
+              <td className="py-3 px-4 text-sm text-gray-600">{calisan.departmanAd}</td>
+              <td className="py-3 px-4">
+                {calisan.adminYetkisi ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                    <Shield size={12} className="mr-1" />
+                    Admin
+                  </span>
+                ) : calisan.yoneticiYetkisi ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    Yönetici
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-400">-</span>
+                )}
+              </td>
+              <td className="py-3 px-4">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${calisan.durum === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                  {calisan.durum}
+                </span>
+              </td>
+              <td className="py-3 px-4 text-right">
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openDetayPanel(calisan)}
+                    title="Detayları Görüntüle"
+                  >
+                    <Eye size={16} />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQrCode(calisan)}
+                    title="QR Kod Oluştur"
+                    disabled={!calisan.zimmetliMi}
+                  >
+                    <QrCode size={16} />
+                  </Button>
+                  {user?.adminYetkisi && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openPasswordDialog(calisan)}
+                      title="Şifre Sıfırla"
+                    >
+                      <Key size={16} />
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditDialog(calisan)}
+                  >
+                    <Pencil size={16} />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(calisan.id)}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {filteredCalisanlar.length === 0 && (
+        <div className="text-center py-8 text-gray-500">Çalışan bulunamadı</div>
+      )}
+    </div>
+  ), [filteredCalisanlar, selectedCalisanIds, toggleSelectAll, toggleSelect, handleBatchPrintQr, openDetayPanel, handleQrCode, user?.adminYetkisi, openPasswordDialog, openEditDialog, handleDelete])
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Çalışanlar</h2>
-          <p className="text-gray-500">Çalışan listesi ve yönetimi</p>
+          <p className="text-gray-500">
+            Çalışan listesi ve yönetimi
+            <span className="ml-2 text-sm">
+              (<span className="text-green-600 font-medium">{aktifCount} Aktif</span>
+              {pasifCount > 0 && <span className="text-gray-400"> / {pasifCount} Pasif</span>})
+            </span>
+          </p>
         </div>
         <Button onClick={openCreateDialog} className="bg-teal-500 hover:bg-teal-600">
           <Plus size={20} className="mr-2" />
@@ -233,102 +602,7 @@ const Calisanlar = ({ user }) => {
           {loading ? (
             <div className="text-center py-8">Yükleniyor...</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Ad Soyad</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Email</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Telefon</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Departman</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Yönetici</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Durum</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">İşlemler</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCalisanlar.map((calisan) => (
-                    <tr key={calisan.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          <span className={calisan.zimmetliMi ? 'text-red-600 font-semibold' : ''}>
-                            {calisan.adSoyad}
-                          </span>
-                          {calisan.zimmetliMi && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
-                              {calisan.aktifZimmetSayisi} Zimmet
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{calisan.email || '-'}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{calisan.telefon || '-'}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{calisan.departmanAd}</td>
-                      <td className="py-3 px-4">
-                        {calisan.adminYetkisi ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                            <Shield size={12} className="mr-1" />
-                            Admin
-                          </span>
-                        ) : calisan.yoneticiYetkisi ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            Yönetici
-                          </span>
-                        ) : (
-                          <span className="text-sm text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          calisan.durum === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {calisan.durum}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => openDetayPanel(calisan)}
-                            title="Detayları Görüntüle"
-                          >
-                            <Eye size={16} />
-                          </Button>
-                          {user?.adminYetkisi && (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => openPasswordDialog(calisan)}
-                              title="Şifre Sıfırla"
-                            >
-                              <Key size={16} />
-                            </Button>
-                          )}
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => openEditDialog(calisan)}
-                          >
-                            <Pencil size={16} />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleDelete(calisan.id)}
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredCalisanlar.length === 0 && (
-                <div className="text-center py-8 text-gray-500">Çalışan bulunamadı</div>
-              )}
-            </div>
+            tableContent
           )}
         </CardContent>
       </Card>
@@ -347,7 +621,8 @@ const Calisanlar = ({ user }) => {
                 <Input
                   id="adSoyad"
                   value={formData.adSoyad}
-                  onChange={(e) => setFormData({ ...formData, adSoyad: e.target.value })}
+                  onChange={(e) => setFormData(prev => ({ ...prev, adSoyad: e.target.value }))}
+                  onBlur={(e) => setFormData(prev => ({ ...prev, adSoyad: toTitleCase(prev.adSoyad) }))}
                   required
                 />
               </div>
@@ -370,8 +645,8 @@ const Calisanlar = ({ user }) => {
               </div>
               <div>
                 <Label htmlFor="departmanId">Departman *</Label>
-                <Select 
-                  value={formData.departmanId} 
+                <Select
+                  value={formData.departmanId}
                   onValueChange={(value) => setFormData({ ...formData, departmanId: value })}
                   required
                 >
@@ -387,8 +662,8 @@ const Calisanlar = ({ user }) => {
               </div>
               <div>
                 <Label htmlFor="durum">Durum</Label>
-                <Select 
-                  value={formData.durum} 
+                <Select
+                  value={formData.durum}
                   onValueChange={(value) => setFormData({ ...formData, durum: value })}
                 >
                   <SelectTrigger>
@@ -400,28 +675,69 @@ const Calisanlar = ({ user }) => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="yoneticiYetkisi"
-                  checked={formData.yoneticiYetkisi}
-                  onCheckedChange={(checked) => setFormData({ ...formData, yoneticiYetkisi: checked })}
-                />
-                <Label htmlFor="yoneticiYetkisi" className="text-sm font-normal cursor-pointer">
-                  Yönetici Yetkisi (Zimmet iadesi alabilir)
-                </Label>
-              </div>
-              {user?.adminYetkisi && (
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="adminYetkisi"
-                    checked={formData.adminYetkisi}
-                    onCheckedChange={(checked) => setFormData({ ...formData, adminYetkisi: checked })}
-                  />
-                  <Label htmlFor="adminYetkisi" className="text-sm font-normal cursor-pointer">
-                    Admin Yetkisi (Yönetici atayabilir, şifre sıfırlayabilir)
-                  </Label>
-                </div>
+              {!editingCalisan && (
+                <>
+                  <div>
+                    <Label htmlFor="sifre">Şifre *</Label>
+                    <Input
+                      id="sifre"
+                      type="password"
+                      value={formData.sifre}
+                      onChange={(e) => setFormData({ ...formData, sifre: e.target.value })}
+                      placeholder="Min 8 karakter, büyük harf, rakam, özel karakter"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">En az 8 karakter, 1 büyük harf, 1 rakam, 1 özel karakter</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="iseGirisTarihi">İşe Giriş Tarihi *</Label>
+                    <Input
+                      id="iseGirisTarihi"
+                      type="date"
+                      value={formData.iseGirisTarihi}
+                      onChange={(e) => setFormData({ ...formData, iseGirisTarihi: e.target.value })}
+                      required
+                    />
+                  </div>
+                </>
               )}
+              <div className="border-t pt-4 mt-4">
+                <Label className="text-sm font-medium mb-3 block">Yetkiler</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="calisanYetkisi"
+                      checked={formData.calisanYetkisi}
+                      onCheckedChange={(checked) => setFormData({ ...formData, calisanYetkisi: checked })}
+                    />
+                    <Label htmlFor="calisanYetkisi" className="text-sm font-normal cursor-pointer">
+                      Çalışan Yetkisi (Login olabilir, kısıtlı erişim)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="yoneticiYetkisi"
+                      checked={formData.yoneticiYetkisi}
+                      onCheckedChange={(checked) => setFormData({ ...formData, yoneticiYetkisi: checked })}
+                    />
+                    <Label htmlFor="yoneticiYetkisi" className="text-sm font-normal cursor-pointer">
+                      Yönetici Yetkisi (Zimmet iadesi alabilir)
+                    </Label>
+                  </div>
+                  {user?.adminYetkisi && (
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="adminYetkisi"
+                        checked={formData.adminYetkisi}
+                        onCheckedChange={(checked) => setFormData({ ...formData, adminYetkisi: checked })}
+                      />
+                      <Label htmlFor="adminYetkisi" className="text-sm font-normal cursor-pointer">
+                        Admin Yetkisi (Yönetici atayabilir, şifre sıfırlayabilir)
+                      </Label>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
@@ -459,14 +775,14 @@ const Calisanlar = ({ user }) => {
                 />
               </div>
               <div className="flex justify-end space-x-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setShowPasswordDialog(false)}
                 >
                   İptal
                 </Button>
-                <Button 
+                <Button
                   onClick={handleResetPassword}
                   className="bg-teal-500 hover:bg-teal-600"
                 >
@@ -480,12 +796,49 @@ const Calisanlar = ({ user }) => {
 
       {/* Çalışan Detay Panel */}
       {showDetayPanel && detayCalisan && (
-        <CalisanDetay 
-          calisan={detayCalisan} 
+        <CalisanDetay
+          calisan={detayCalisan}
           onClose={closeDetayPanel}
           user={user}
         />
       )}
+
+      {/* QR Kod Dialog */}
+      <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>QR Kod Etiketi</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-white" id="qr-label">
+            <h3 className="font-bold text-lg mb-2 border-b w-full text-center pb-2">Halk Tv İnsan Kaynakları</h3>
+            {qrCodeUrl && (
+              <img src={qrCodeUrl} alt="QR Code" width={200} height={200} className="mb-4" />
+            )}
+            <div className="w-full text-left space-y-2 text-sm">
+              <div>
+                <span className="font-bold block text-gray-700">Çalışanlar Bilgileri:</span>
+                <span className="break-words">
+                  {selectedCalisanForQr?.adSoyad}
+                </span>
+              </div>
+              <div>
+                <span className="font-bold block text-gray-700">Departman:</span>
+                <span className="font-mono">
+                  {selectedCalisanForQr?.departmanAd}
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowQrDialog(false)}>
+              Kapat
+            </Button>
+            <Button onClick={handlePrintQr} className="bg-teal-500 hover:bg-teal-600">
+              Yazdır
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

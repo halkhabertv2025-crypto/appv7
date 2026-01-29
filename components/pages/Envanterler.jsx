@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus, Package, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus, Package, ChevronDown, ChevronRight, QrCode, Printer, History } from 'lucide-react'
+import QRCode from 'qrcode'
 import { useToast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
+import { cn, toTitleCase } from '@/lib/utils'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const Envanterler = ({ user }) => {
   const [envanterler, setEnvanterler] = useState([])
@@ -36,7 +38,11 @@ const Envanterler = ({ user }) => {
     model: '',
     seriNumarasi: '',
     durum: 'Depoda',
-    notlar: ''
+    notlar: '',
+    // Financial fields
+    alisFiyati: '',
+    paraBirimi: 'TRY',
+    alisTarihi: ''
   })
   const [zimmetFormData, setZimmetFormData] = useState({
     calisanId: '',
@@ -50,6 +56,13 @@ const Envanterler = ({ user }) => {
     seriNumarasi: '',
     durum: 'Depoda'
   })
+  const [showQrDialog, setShowQrDialog] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
+  const [selectedEnvanterForQr, setSelectedEnvanterForQr] = useState(null)
+  const [showGecmisDialog, setShowGecmisDialog] = useState(false)
+  const [selectedEnvanterForGecmis, setSelectedEnvanterForGecmis] = useState(null)
+  const [envanterGecmisi, setEnvanterGecmisi] = useState({ zimmetGecmisi: [], islemLoglari: [] })
+  const [gecmisLoading, setGecmisLoading] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -63,7 +76,7 @@ const Envanterler = ({ user }) => {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(env => 
+      filtered = filtered.filter(env =>
         env.marka.toLowerCase().includes(searchTerm.toLowerCase()) ||
         env.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
         env.seriNumarasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -129,10 +142,38 @@ const Envanterler = ({ user }) => {
     }
   }
 
+  // İşlem geçmişi fonksiyonları
+  const fetchEnvanterGecmisi = async (envanterId) => {
+    setGecmisLoading(true)
+    try {
+      const response = await fetch(`/api/envanterler/${envanterId}/gecmis`)
+      const data = await response.json()
+      if (response.ok) {
+        setEnvanterGecmisi({
+          zimmetGecmisi: data.zimmetGecmisi || [],
+          islemLoglari: data.islemLoglari || []
+        })
+      } else {
+        toast({ title: 'Hata', description: 'Geçmiş yüklenemedi', variant: 'destructive' })
+      }
+    } catch (error) {
+      console.error('Geçmiş yüklenemedi:', error)
+      toast({ title: 'Hata', description: 'Geçmiş yüklenemedi', variant: 'destructive' })
+    } finally {
+      setGecmisLoading(false)
+    }
+  }
+
+  const openGecmisDialog = async (envanter) => {
+    setSelectedEnvanterForGecmis(envanter)
+    setShowGecmisDialog(true)
+    await fetchEnvanterGecmisi(envanter.id)
+  }
+
   const toggleRow = async (envanterId) => {
     const newExpanded = { ...expandedRows, [envanterId]: !expandedRows[envanterId] }
     setExpandedRows(newExpanded)
-    
+
     if (newExpanded[envanterId] && !aksesuarlar[envanterId]) {
       await fetchAksesuarlar(envanterId)
     }
@@ -163,12 +204,12 @@ const Envanterler = ({ user }) => {
 
   const handleAksesuarSubmit = async (e) => {
     e.preventDefault()
-    
+
     try {
       const url = editingAksesuar
         ? `/api/envanterler/${selectedEnvanterForAksesuar.id}/accessories/${editingAksesuar.id}`
         : `/api/envanterler/${selectedEnvanterForAksesuar.id}/accessories`
-      
+
       const response = await fetch(url, {
         method: editingAksesuar ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,11 +223,11 @@ const Envanterler = ({ user }) => {
         return
       }
 
-      toast({ 
-        title: 'Başarılı', 
-        description: editingAksesuar ? 'Aksesuar güncellendi' : 'Aksesuar eklendi' 
+      toast({
+        title: 'Başarılı',
+        description: editingAksesuar ? 'Aksesuar güncellendi' : 'Aksesuar eklendi'
       })
-      
+
       setShowAksesuarDialog(false)
       fetchAksesuarlar(selectedEnvanterForAksesuar.id)
     } catch (error) {
@@ -216,7 +257,7 @@ const Envanterler = ({ user }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     // Eğer düzenleme modundaysa ve durum "Zimmetli" olarak değiştirilmişse
     if (editingEnvanter && formData.durum === 'Zimmetli' && editingEnvanter.durum !== 'Zimmetli') {
       // Zimmet dialog'unu aç
@@ -230,16 +271,16 @@ const Envanterler = ({ user }) => {
       setShowZimmetDialog(true)
       return
     }
-    
+
     try {
-      const url = editingEnvanter 
+      const url = editingEnvanter
         ? `/api/envanterler/${editingEnvanter.id}`
         : '/api/envanterler'
-      
+
       // Audit log için eski ve yeni durumu kaydet
       const oldDurum = editingEnvanter?.durum
       const newDurum = formData.durum
-      
+
       const response = await fetch(url, {
         method: editingEnvanter ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -260,11 +301,36 @@ const Envanterler = ({ user }) => {
         return
       }
 
-      toast({ 
-        title: 'Başarılı', 
-        description: editingEnvanter ? 'Envanter güncellendi' : 'Envanter oluşturuldu' 
+      toast({
+        title: 'Başarılı',
+        description: editingEnvanter ? 'Envanter güncellendi' : 'Envanter oluşturuldu'
       })
-      
+
+      // If status changed to Servis, auto-create a Bakım/Onarım record
+      if (editingEnvanter && newDurum === 'Servis' && oldDurum !== 'Servis') {
+        try {
+          await fetch('/api/bakim-kayitlari', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              envanterId: editingEnvanter.id,
+              arizaTuru: 'Bakım',
+              aciklama: 'Servis için gönderildi',
+              bildirilenTarih: new Date().toISOString(),
+              durum: 'Serviste',
+              userId: user?.id,
+              userName: user?.adSoyad
+            })
+          })
+          toast({
+            title: 'Bilgi',
+            description: 'Bakım/Onarım kaydı otomatik oluşturuldu'
+          })
+        } catch (err) {
+          console.error('Bakım kaydı oluşturulamadı:', err)
+        }
+      }
+
       setShowDialog(false)
       setFormData({
         envanterTipiId: '',
@@ -272,7 +338,10 @@ const Envanterler = ({ user }) => {
         model: '',
         seriNumarasi: '',
         durum: 'Depoda',
-        notlar: ''
+        notlar: '',
+        alisFiyati: '',
+        paraBirimi: 'TRY',
+        alisTarihi: ''
       })
       setEditingEnvanter(null)
       fetchEnvanterler()
@@ -284,12 +353,12 @@ const Envanterler = ({ user }) => {
   // Zimmet oluşturma
   const handleZimmetSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!zimmetFormData.calisanId) {
       toast({ title: 'Hata', description: 'Lütfen bir çalışan seçin', variant: 'destructive' })
       return
     }
-    
+
     try {
       const response = await fetch('/api/zimmetler', {
         method: 'POST',
@@ -312,7 +381,7 @@ const Envanterler = ({ user }) => {
       }
 
       toast({ title: 'Başarılı', description: 'Envanter zimmetlendi' })
-      
+
       setShowZimmetDialog(false)
       setSelectedEnvanterForZimmet(null)
       setZimmetFormData({
@@ -327,6 +396,196 @@ const Envanterler = ({ user }) => {
     }
   }
 
+
+
+  // Batch Selection Logic
+  const [selectedEnvanterIds, setSelectedEnvanterIds] = useState(new Set())
+
+  const toggleSelectAll = () => {
+    if (selectedEnvanterIds.size === filteredEnvanterler.length) {
+      setSelectedEnvanterIds(new Set())
+    } else {
+      setSelectedEnvanterIds(new Set(filteredEnvanterler.map(e => e.id)))
+    }
+  }
+
+  const toggleSelect = (id) => {
+    const newSelected = new Set(selectedEnvanterIds)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedEnvanterIds(newSelected)
+  }
+
+  const handleBatchPrintQr = async () => {
+    if (selectedEnvanterIds.size === 0) {
+      toast({ title: 'Hata', description: 'Lütfen en az bir envanter seçin', variant: 'destructive' })
+      return
+    }
+
+    const selectedEnvanterler = filteredEnvanterler.filter(e => selectedEnvanterIds.has(e.id))
+
+    // Generate QR codes for all
+    const qrData = await Promise.all(selectedEnvanterler.map(async (envanter) => {
+      const url = `${window.location.origin}/zimmet-dogrula/${envanter.id}`
+      const qrDataUrl = await QRCode.toDataURL(url, { width: 150, margin: 1 })
+      return { ...envanter, qrDataUrl }
+    }))
+
+    const printWindow = window.open('', '', 'width=800,height=800')
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Toplu QR Etiketleri</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0; 
+              padding: 20px;
+              display: flex;
+              flex-wrap: wrap;
+              gap: 10px;
+            }
+            .label-container {
+              text-align: center;
+              border: 1px solid #ccc;
+              padding: 10px;
+              width: 300px;
+              height: auto;
+              page-break-inside: avoid;
+              box-sizing: border-box;
+              margin-bottom: 20px;
+            }
+            .header {
+              font-weight: bold;
+              font-size: 16px;
+              margin-bottom: 8px;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 4px;
+            }
+            .qr-image {
+              margin: 5px 0;
+            }
+            .info {
+              font-size: 12px;
+              margin-top: 5px;
+              text-align: left;
+            }
+            .info div {
+              margin-bottom: 3px;
+            }
+            .label {
+              font-weight: bold;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .label-container {
+                border: 1px dotted #ccc;
+                box-shadow: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${qrData.map(data => `
+            <div class="label-container">
+              <div class="header">Halk Tv Envanter</div>
+              <img src="${data.qrDataUrl}" class="qr-image" width="120" height="120" />
+              <div class="info">
+                <div><span class="label">Envanter Adı:</span> ${data.envanterTipiAd} ${data.marka} ${data.model}</div>
+                <div><span class="label">Envanterin Seri Numarası:</span> ${data.seriNumarasi}</div>
+              </div>
+            </div>
+          `).join('')}
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
+
+  const handleQrCode = async (envanter) => {
+    setSelectedEnvanterForQr(envanter)
+    try {
+      const url = `${window.location.origin}/zimmet-dogrula/${envanter.id}`
+      const qrDataUrl = await QRCode.toDataURL(url, { width: 200, margin: 1 })
+      setQrCodeUrl(qrDataUrl)
+      setShowQrDialog(true)
+    } catch (err) {
+      console.error(err)
+      toast({ title: 'Hata', description: 'QR Kod oluşturulamadı', variant: 'destructive' })
+    }
+  }
+
+  const handlePrintQr = () => {
+    const printWindow = window.open('', '', 'width=600,height=600')
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>QR Kod Etiketi</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              display: flex; 
+              justify-content: center; 
+              align-items: center; 
+              height: 100vh; 
+              margin: 0; 
+            }
+            .label-container {
+              text-align: center;
+              border: 2px solid #000;
+              padding: 20px;
+              width: 300px;
+            }
+            .header {
+              font-weight: bold;
+              font-size: 18px;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 5px;
+            }
+            .qr-image {
+              margin: 10px 0;
+            }
+            .info {
+              font-size: 14px;
+              margin-top: 10px;
+              text-align: left;
+            }
+            .info div {
+              margin-bottom: 5px;
+            }
+            .label {
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="label-container">
+            <div class="header">Halk Tv Envanter</div>
+            <img src="${qrCodeUrl}" class="qr-image" width="150" height="150" />
+            <div class="info">
+              <div><span class="label">Envanter Adı:</span> ${selectedEnvanterForQr.envanterTipiAd} ${selectedEnvanterForQr.marka} ${selectedEnvanterForQr.model}</div>
+              <div><span class="label">Envanterin Seri Numarası:</span> ${selectedEnvanterForQr.seriNumarasi}</div>
+            </div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
   const handleDelete = async (id) => {
     if (!confirm('Bu envanteri silmek istediğinize emin misiniz?')) return
 
@@ -336,7 +595,8 @@ const Envanterler = ({ user }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user?.id,
-          userName: user?.adSoyad
+          userName: user?.adSoyad,
+          userRole: user?.adminYetkisi ? 'Admin' : (user?.yoneticiYetkisi ? 'Yönetici' : 'Çalışan')
         })
       })
 
@@ -384,7 +644,10 @@ const Envanterler = ({ user }) => {
       model: envanter.model,
       seriNumarasi: envanter.seriNumarasi,
       durum: envanter.durum,
-      notlar: envanter.notlar
+      notlar: envanter.notlar || '',
+      alisFiyati: envanter.alisFiyati?.toString() || '',
+      paraBirimi: envanter.paraBirimi || 'TRY',
+      alisTarihi: envanter.alisTarihi ? new Date(envanter.alisTarihi).toISOString().split('T')[0] : ''
     })
     setShowDialog(true)
   }
@@ -397,7 +660,10 @@ const Envanterler = ({ user }) => {
       model: '',
       seriNumarasi: '',
       durum: 'Depoda',
-      notlar: ''
+      notlar: '',
+      alisFiyati: '',
+      paraBirimi: 'TRY',
+      alisTarihi: ''
     })
     setShowDialog(true)
   }
@@ -468,9 +734,26 @@ const Envanterler = ({ user }) => {
             <div className="text-center py-8">Yükleniyor...</div>
           ) : (
             <div className="overflow-x-auto">
+              <div className="mb-2 flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBatchPrintQr}
+                  disabled={selectedEnvanterIds.size === 0}
+                >
+                  <Printer className="mr-2" size={16} />
+                  Seçilenleri Qr Kod Yazdır ({selectedEnvanterIds.size})
+                </Button>
+              </div>
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    <th className="py-3 px-4 w-10">
+                      <Checkbox
+                        checked={filteredEnvanterler.length > 0 && selectedEnvanterIds.size === filteredEnvanterler.length}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </th>
                     <th className="w-8"></th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Envanter Tipi</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Marka</th>
@@ -486,8 +769,14 @@ const Envanterler = ({ user }) => {
                   {filteredEnvanterler.map((envanter) => (
                     <>
                       <tr key={envanter.id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <Checkbox
+                            checked={selectedEnvanterIds.has(envanter.id)}
+                            onCheckedChange={() => toggleSelect(envanter.id)}
+                          />
+                        </td>
                         <td className="py-3 px-2">
-                          <button 
+                          <button
                             onClick={() => toggleRow(envanter.id)}
                             className="p-1 hover:bg-gray-200 rounded"
                           >
@@ -512,30 +801,46 @@ const Envanterler = ({ user }) => {
                           {envanter.zimmetBilgisi?.calisanAd || '-'}
                         </td>
                         <td className="py-3 px-4 text-sm">
-                          {envanter.zimmetBilgisi?.zimmetTarihi 
+                          {envanter.zimmetBilgisi?.zimmetTarihi
                             ? new Date(envanter.zimmetBilgisi.zimmetTarihi).toLocaleDateString('tr-TR')
                             : '-'
                           }
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex justify-end space-x-2">
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => openAksesuarDialog(envanter)}
                               title="Aksesuar Ekle"
                             >
                               <Package size={16} />
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openGecmisDialog(envanter)}
+                              title="İşlem Geçmişi"
+                            >
+                              <History size={16} />
+                            </Button>
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => openEditDialog(envanter)}
                             >
                               <Pencil size={16} />
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleQrCode(envanter)}
+                              title="QR Kod Oluştur"
+                            >
+                              <QrCode size={16} />
+                            </Button>
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => handleDelete(envanter.id)}
                             >
@@ -551,8 +856,8 @@ const Envanterler = ({ user }) => {
                             <div className="ml-6 p-3 bg-white rounded-lg border">
                               <div className="flex justify-between items-center mb-2">
                                 <h4 className="font-medium text-sm text-gray-700">Aksesuarlar</h4>
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   variant="outline"
                                   onClick={() => openAksesuarDialog(envanter)}
                                   className="h-7 text-xs"
@@ -592,13 +897,13 @@ const Envanterler = ({ user }) => {
                                         </td>
                                         <td className="py-1 px-2 text-right">
                                           <div className="flex justify-end gap-1">
-                                            <button 
+                                            <button
                                               onClick={() => openAksesuarDialog(envanter, aks)}
                                               className="p-1 hover:bg-gray-100 rounded"
                                             >
                                               <Pencil size={14} />
                                             </button>
-                                            <button 
+                                            <button
                                               onClick={() => handleAksesuarDelete(envanter.id, aks.id)}
                                               className="p-1 hover:bg-red-100 rounded text-red-600"
                                             >
@@ -640,8 +945,8 @@ const Envanterler = ({ user }) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <Label htmlFor="envanterTipiId">Envanter Tipi *</Label>
-                <Select 
-                  value={formData.envanterTipiId} 
+                <Select
+                  value={formData.envanterTipiId}
                   onValueChange={(value) => setFormData({ ...formData, envanterTipiId: value })}
                   required
                 >
@@ -660,7 +965,7 @@ const Envanterler = ({ user }) => {
                 <Input
                   id="marka"
                   value={formData.marka}
-                  onChange={(e) => setFormData({ ...formData, marka: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, marka: toTitleCase(e.target.value) })}
                   required
                 />
               </div>
@@ -669,7 +974,7 @@ const Envanterler = ({ user }) => {
                 <Input
                   id="model"
                   value={formData.model}
-                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, model: toTitleCase(e.target.value) })}
                   required
                 />
               </div>
@@ -684,8 +989,8 @@ const Envanterler = ({ user }) => {
               </div>
               <div>
                 <Label htmlFor="durum">Durum</Label>
-                <Select 
-                  value={formData.durum} 
+                <Select
+                  value={formData.durum}
                   onValueChange={(value) => setFormData({ ...formData, durum: value })}
                   disabled={editingEnvanter?.durum === 'Zimmetli'}
                 >
@@ -703,6 +1008,7 @@ const Envanterler = ({ user }) => {
                       <SelectItem value="Zimmetli">Zimmetle</SelectItem>
                     )}
                     <SelectItem value="Arızalı">Arızalı</SelectItem>
+                    <SelectItem value="Servis">Servis</SelectItem>
                     <SelectItem value="Kayıp">Kayıp</SelectItem>
                   </SelectContent>
                 </Select>
@@ -712,6 +1018,51 @@ const Envanterler = ({ user }) => {
                   </p>
                 )}
               </div>
+
+              {/* Financial Section */}
+              <div className="col-span-2 border-t pt-4 mt-2">
+                <h4 className="font-medium text-gray-700 mb-3">Finansal Bilgiler</h4>
+              </div>
+
+              <div>
+                <Label htmlFor="alisFiyati">Alış Fiyatı</Label>
+                <Input
+                  id="alisFiyati"
+                  type="number"
+                  value={formData.alisFiyati}
+                  onChange={(e) => setFormData({ ...formData, alisFiyati: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="paraBirimi">Para Birimi</Label>
+                <Select
+                  value={formData.paraBirimi}
+                  onValueChange={(value) => setFormData({ ...formData, paraBirimi: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TRY">₺ TRY</SelectItem>
+                    <SelectItem value="USD">$ USD</SelectItem>
+                    <SelectItem value="EUR">€ EUR</SelectItem>
+                    <SelectItem value="GBP">£ GBP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="alisTarihi">Alış Tarihi</Label>
+                <Input
+                  id="alisTarihi"
+                  type="date"
+                  value={formData.alisTarihi}
+                  onChange={(e) => setFormData({ ...formData, alisTarihi: e.target.value })}
+                />
+              </div>
+
               <div className="col-span-2">
                 <Label htmlFor="notlar">Notlar</Label>
                 <Textarea
@@ -755,8 +1106,8 @@ const Envanterler = ({ user }) => {
               )}
               <div>
                 <Label htmlFor="calisanId">Zimmetlenecek Çalışan *</Label>
-                <Select 
-                  value={zimmetFormData.calisanId} 
+                <Select
+                  value={zimmetFormData.calisanId}
                   onValueChange={(value) => setZimmetFormData({ ...zimmetFormData, calisanId: value })}
                   required
                 >
@@ -808,6 +1159,42 @@ const Envanterler = ({ user }) => {
         </DialogContent>
       </Dialog>
 
+      {/* QR Kod Dialog */}
+      <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>QR Kod Etiketi</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-white" id="qr-label">
+            <h3 className="font-bold text-lg mb-2 border-b w-full text-center pb-2">Halk Tv Envanter</h3>
+            {qrCodeUrl && (
+              <img src={qrCodeUrl} alt="QR Code" width={200} height={200} className="mb-4" />
+            )}
+            <div className="w-full text-left space-y-2 text-sm">
+              <div>
+                <span className="font-bold block text-gray-700">Envanter Adı:</span>
+                <span className="break-words">
+                  {selectedEnvanterForQr && `${selectedEnvanterForQr.envanterTipiAd} ${selectedEnvanterForQr.marka} ${selectedEnvanterForQr.model}`}
+                </span>
+              </div>
+              <div>
+                <span className="font-bold block text-gray-700">Envanterin Seri Numarası:</span>
+                <span className="font-mono">
+                  {selectedEnvanterForQr?.seriNumarasi}
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowQrDialog(false)}>
+              Kapat
+            </Button>
+            <Button onClick={handlePrintQr} className="bg-teal-500 hover:bg-teal-600">
+              Yazdır
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Aksesuar Dialog */}
       <Dialog open={showAksesuarDialog} onOpenChange={setShowAksesuarDialog}>
         <DialogContent className="max-w-md">
@@ -840,7 +1227,7 @@ const Envanterler = ({ user }) => {
                   <Input
                     id="aksesuarMarka"
                     value={aksesuarFormData.marka}
-                    onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, marka: e.target.value })}
+                    onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, marka: toTitleCase(e.target.value) })}
                   />
                 </div>
                 <div>
@@ -848,7 +1235,7 @@ const Envanterler = ({ user }) => {
                   <Input
                     id="aksesuarModel"
                     value={aksesuarFormData.model}
-                    onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, model: e.target.value })}
+                    onChange={(e) => setAksesuarFormData({ ...aksesuarFormData, model: toTitleCase(e.target.value) })}
                   />
                 </div>
               </div>
@@ -887,6 +1274,194 @@ const Envanterler = ({ user }) => {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* İşlem Geçmişi Dialog */}
+      <Dialog open={showGecmisDialog} onOpenChange={setShowGecmisDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <History className="mr-2" size={20} />
+              İşlem Geçmişi
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedEnvanterForGecmis && (
+            <div className="p-3 bg-gray-50 rounded-lg mb-4">
+              <div className="text-sm">
+                <span className="font-medium">{selectedEnvanterForGecmis.envanterTipiAd}</span>
+                {' '}{selectedEnvanterForGecmis.marka} {selectedEnvanterForGecmis.model}
+              </div>
+              <div className="text-xs text-gray-500 font-mono mt-1">
+                Seri No: {selectedEnvanterForGecmis.seriNumarasi}
+              </div>
+            </div>
+          )}
+
+          <div className="overflow-y-auto max-h-[50vh]">
+            {gecmisLoading ? (
+              <div className="text-center py-8 text-gray-500">Yükleniyor...</div>
+            ) : (
+              <div className="space-y-4">
+                {/* Zimmet Geçmişi */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                    <span className="w-2 h-2 bg-teal-500 rounded-full mr-2"></span>
+                    Zimmet Geçmişi
+                  </h4>
+                  
+                  {envanterGecmisi.zimmetGecmisi.length > 0 ? (
+                    <div className="space-y-3">
+                      {envanterGecmisi.zimmetGecmisi.map((zimmet, index) => (
+                        <div 
+                          key={zimmet.id || index} 
+                          className={cn(
+                            "p-4 rounded-lg border-l-4",
+                            zimmet.durum === 'Aktif' 
+                              ? "bg-green-50 border-green-500" 
+                              : "bg-gray-50 border-gray-300"
+                          )}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-medium text-gray-800">
+                                {zimmet.calisanAd}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {zimmet.departmanAd}
+                              </div>
+                            </div>
+                            <span className={cn(
+                              "px-2 py-1 rounded text-xs font-medium",
+                              zimmet.durum === 'Aktif' 
+                                ? "bg-green-100 text-green-800" 
+                                : "bg-gray-100 text-gray-600"
+                            )}>
+                              {zimmet.durum}
+                            </span>
+                          </div>
+                          
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-gray-500">Zimmet Tarihi:</span>
+                              <span className="ml-2 font-medium">
+                                {zimmet.zimmetTarihi 
+                                  ? new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')
+                                  : '-'
+                                }
+                              </span>
+                            </div>
+                            {zimmet.iadeTarihi && (
+                              <div>
+                                <span className="text-gray-500">İade Tarihi:</span>
+                                <span className="ml-2 font-medium">
+                                  {new Date(zimmet.iadeTarihi).toLocaleDateString('tr-TR')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {zimmet.iadeAlanYetkili && (
+                            <div className="mt-2 text-sm">
+                              <span className="text-gray-500">İade Alan:</span>
+                              <span className="ml-2 font-medium text-gray-700">
+                                {zimmet.iadeAlanYetkili.adSoyad}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {zimmet.aciklama && (
+                            <div className="mt-2 text-sm text-gray-600 italic">
+                              "{zimmet.aciklama}"
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-400 bg-gray-50 rounded-lg">
+                      Henüz zimmet geçmişi bulunmuyor
+                    </div>
+                  )}
+                </div>
+
+                {/* İşlem Logları */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                    İşlem Logları
+                  </h4>
+                  
+                  {envanterGecmisi.islemLoglari.length > 0 ? (
+                    <div className="space-y-3">
+                      {envanterGecmisi.islemLoglari.map((log) => (
+                        <div key={log.id} className="p-3 bg-white border rounded-lg text-sm shadow-sm relative overflow-hidden">
+                           <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium text-gray-800">
+                              {log.actionType === 'CREATE_INVENTORY' && 'Envanter Oluşturuldu'}
+                              {log.actionType === 'UPDATE_INVENTORY' && 'Envanter Güncellendi'}
+                              {log.actionType === 'DELETE_INVENTORY' && 'Envanter Silindi'}
+                              {log.actionType === 'CREATE_ZIMMET' && 'Zimmetlendi'}
+                              {log.actionType === 'RETURN_ZIMMET' && 'İade Alındı'}
+                              {log.actionType === 'UPDATE_EMPLOYEE' && 'Çalışan Güncellendi'}
+                              {!['CREATE_INVENTORY', 'UPDATE_INVENTORY', 'DELETE_INVENTORY', 'CREATE_ZIMMET', 'RETURN_ZIMMET', 'UPDATE_EMPLOYEE'].includes(log.actionType) && (log.actionType || 'İşlem')}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(log.createdAt).toLocaleString('tr-TR')}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 mb-1">
+                             <span className="font-medium text-gray-600">{log.actorUserName}</span> tarafından
+                          </div>
+                          
+                          {/* Detaylar */}
+                          {log.details?.degisiklikler ? (
+                            <div className="mt-2 bg-gray-50 p-2 rounded border border-gray-100">
+                              <div className="text-xs font-medium text-gray-500 mb-1">Değişiklikler:</div>
+                              {Object.entries(log.details.degisiklikler).map(([key, val]) => (
+                                <div key={key} className="text-xs grid grid-cols-[auto,auto,1fr] gap-2 items-center mb-1 last:mb-0">
+                                  <span className="text-gray-600 font-medium">{key}</span>
+                                  <span className="text-gray-400">→</span>
+                                  <span className="truncate" title={`${val.onceki} -> ${val.yeni}`}>
+                                    <span className="text-red-400 line-through mr-1 opacity-75">{val.onceki ? val.onceki.toString() : '(boş)'}</span>
+                                    <span className="text-green-600 font-medium">{val.yeni ? val.yeni.toString() : '(boş)'}</span>
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                             log.details && Object.keys(log.details).length > 0 && (
+                               <div className="mt-1 text-xs text-gray-400 truncate">
+                                 {Object.entries(log.details)
+                                   .filter(([k]) => k !== 'degisiklikler')
+                                   .map(([k, v]) => {
+                                     if (k === 'inventoryId') {
+                                       return `Envanter: ${selectedEnvanterForGecmis.marka} ${selectedEnvanterForGecmis.model}`
+                                     }
+                                     return `${k}: ${v}`
+                                   }).join(', ')}
+                               </div>
+                             )
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-400 bg-gray-50 rounded-lg">
+                      Henüz işlem kaydı bulunmuyor
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowGecmisDialog(false)}>
+              Kapat
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

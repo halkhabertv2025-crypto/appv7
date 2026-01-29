@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Package, PackageCheck, PackageMinus, PackageX, TrendingUp } from 'lucide-react'
+import { Package, PackageCheck, PackageMinus, PackageX, TrendingUp, Clock, AlertCircle, Wrench, CheckCircle } from 'lucide-react'
 
-const Dashboard = () => {
+const Dashboard = ({ user }) => {
   const [stats, setStats] = useState({
     total: 0,
     zimmetli: 0,
@@ -12,11 +12,22 @@ const Dashboard = () => {
     arizali: 0
   })
   const [recentZimmetler, setRecentZimmetler] = useState([])
+  const [recentLogins, setRecentLogins] = useState([])
+  const [lastLogin, setLastLogin] = useState(null)
+  const [servistekiCihazlar, setServistekiCihazlar] = useState([])
+  const [tamamlananBakimlar, setTamamlananBakimlar] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // Check if user has only çalışan yetkisi (limited access)
+  const hasLimitedAccess = user?.calisanYetkisi && !user?.yoneticiYetkisi && !user?.adminYetkisi
+
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    if (!hasLimitedAccess) {
+      fetchDashboardData()
+    } else {
+      setLoading(false)
+    }
+  }, [hasLimitedAccess])
 
   const fetchDashboardData = async () => {
     try {
@@ -24,11 +35,28 @@ const Dashboard = () => {
       const data = await response.json()
       setStats(data.stats)
       setRecentZimmetler(data.recentZimmetler)
+      setRecentLogins(data.recentLogins || [])
+      setLastLogin(data.lastLogin || null)
+      setServistekiCihazlar(data.servistekiCihazlar || [])
+      setTamamlananBakimlar(data.tamamlananBakimlar || [])
     } catch (error) {
       console.error('Dashboard verileri alınamadı:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Simplified dashboard for çalışan yetkisi users
+  if (hasLimitedAccess) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-16">
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Hoş Geldiniz, {user?.adSoyad}</h2>
+          <p className="text-xl text-gray-600 mb-2">Halk TV İnsan Kaynakları Sistemi</p>
+          <p className="text-lg text-teal-600 font-medium">Görevinizde başarılar dileriz!</p>
+        </div>
+      </div>
+    )
   }
 
   const statCards = [
@@ -66,14 +94,39 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-800">Anasayfa</h2>
-        <p className="text-gray-500">Merhaba Adem, Bugün Apple'da ilk günün</p>
+        <p className="text-gray-500">Merhaba, Halk TV'ye hoş geldiniz</p>
       </div>
+
+      {/* Admin Notification for Completed Repairs */}
+      {(!hasLimitedAccess && tamamlananBakimlar.length > 0) && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <CheckCircle className="text-green-600 mt-1 mr-3" size={20} />
+            <div className="flex-1">
+              <h3 className="text-lg font-medium text-green-800 mb-2">Tamamlanan Bakım/Onarım Bildirimleri</h3>
+              <div className="space-y-2">
+                {tamamlananBakimlar.map((bakim) => (
+                  <div key={bakim.id} className="text-sm text-green-700 flex justify-between items-center bg-white p-2 rounded border border-green-100">
+                    <span>
+                      <strong>{bakim.envanterAd}</strong> cihazının bakımı tamamlandı.
+                      {bakim.maliyet > 0 && ` (Maliyet: ${bakim.maliyet} ${bakim.paraBirimi})`}
+                    </span>
+                    <span className="text-xs text-green-500">
+                      {new Date(bakim.bitisTarihi).toLocaleDateString('tr-TR')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat, index) => {
           const Icon = stat.icon
           const percentage = stats.total > 0 ? Math.round((stat.value / stats.total) * 100) : 0
-          
+
           return (
             <Card key={index} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
@@ -88,7 +141,7 @@ const Dashboard = () => {
                 </div>
                 <div className="text-sm font-medium text-gray-600">{stat.title}</div>
                 <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className={`h-full ${stat.color.replace('text-', 'bg-')}`}
                     style={{ width: `${percentage}%` }}
                   />
@@ -100,6 +153,99 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Service Tracking Widget */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center">
+              <Wrench className="mr-2 text-blue-600" size={20} />
+              Servisteki Cihazlar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {servistekiCihazlar.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Şu anda serviste olan cihaz bulunmamaktadır
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {servistekiCihazlar.map((device) => {
+                  const startDate = new Date(device.baslangicTarihi)
+                  const endDate = device.bitisTarihi ? new Date(device.bitisTarihi) : null
+                  const today = new Date()
+
+                  let remainingDays = null
+                  let totalDuration = 7
+                  let elapsedDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
+
+                  if (endDate) {
+                    const diffTime = endDate - today
+                    remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+                    totalDuration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) || 1
+                  } else {
+                    // Fallback to estimated duration if manual end date not set
+                    totalDuration = device.tahminiSure || 7
+                  }
+
+                  const progress = Math.min(100, Math.max(0, (elapsedDays / totalDuration) * 100))
+
+                  // Color based on remaining time
+                  let progressColor = 'bg-blue-500'
+                  if (remainingDays !== null && remainingDays <= 2) progressColor = 'bg-yellow-500'
+                  if (remainingDays !== null && remainingDays < 0) progressColor = 'bg-red-500'
+
+                  // If no end date, use old logic for color
+                  if (remainingDays === null && elapsedDays >= totalDuration) progressColor = 'bg-red-500'
+
+                  return (
+                    <div key={device.id} className="border rounded-lg p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="font-medium text-sm">{device.envanterAd}</div>
+                        <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                          {device.servisFirma}
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>Başlangıç: {startDate.toLocaleDateString('tr-TR')}</span>
+                        <span>
+                          {remainingDays !== null ? (
+                            remainingDays < 0
+                              ? `${Math.abs(remainingDays)} gün gecikti`
+                              : `${remainingDays} gün kaldı`
+                          ) : (
+                            `${elapsedDays} gün geçti (Tahmini: ${totalDuration} gün)`
+                          )}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div className={`h-2.5 rounded-full ${progressColor}`} style={{ width: `${progress}%` }}></div>
+                      </div>
+                      {remainingDays !== null && remainingDays === 0 && (
+                        <div className="text-xs text-orange-600 mt-1 flex items-center font-bold">
+                          <AlertCircle size={12} className="mr-1" />
+                          Bugün teslim günü!
+                        </div>
+                      )}
+                      {remainingDays !== null && remainingDays < 0 && (
+                        <div className="text-xs text-red-600 mt-1 flex items-center">
+                          <AlertCircle size={12} className="mr-1" />
+                          Teslim süresi aşıldı
+                        </div>
+                      )}
+                      {remainingDays === null && elapsedDays >= totalDuration && (
+                        <div className="text-xs text-red-600 mt-1 flex items-center">
+                          <AlertCircle size={12} className="mr-1" />
+                          Tahmini süre doldu veya aşıldı
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Izin Talepleri / Onaylari */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center">
@@ -125,6 +271,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+
 
       <Card>
         <CardHeader>
@@ -159,9 +307,8 @@ const Dashboard = () => {
                         {new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')}
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          zimmet.durum === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${zimmet.durum === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
                           {zimmet.durum}
                         </span>
                       </td>
@@ -179,15 +326,55 @@ const Dashboard = () => {
           <CardTitle className="text-lg">Tebrikler</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-            <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
-              <span className="text-lg font-semibold">AE</span>
+          {lastLogin ? (
+            <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg border border-teal-100">
+              <div className="w-12 h-12 bg-teal-500 text-white rounded-full flex items-center justify-center shadow-md">
+                <span className="text-lg font-semibold">
+                  {lastLogin.userName?.split(' ').map(n => n[0]).join('').substring(0, 2) || '??'}
+                </span>
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-800">{lastLogin.userName}</div>
+                <div className="text-sm text-teal-600">Son Giriş - {new Date(lastLogin.timestamp).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</div>
+              </div>
             </div>
-            <div className="flex-1">
-              <div className="font-medium">Adem Elma</div>
-              <div className="text-sm text-gray-500">Yeni İşe Alım - Bugün</div>
+          ) : (
+            <div className="text-center py-4 text-gray-500">Henüz giriş kaydı yok</div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Son Login Olanlar</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentLogins.length === 0 ? (
+            <div className="text-center py-4 text-gray-500 text-sm">
+              Henüz login kaydı yok
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              {recentLogins.map((login, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center font-semibold text-xs">
+                      {login.userName.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">{login.userName}</div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(login.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(login.timestamp).toLocaleDateString('tr-TR')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

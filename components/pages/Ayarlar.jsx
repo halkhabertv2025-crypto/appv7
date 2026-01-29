@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { FileText, Search, Filter, RotateCcw, Package, Users, Download, Database, AlertCircle, Key } from 'lucide-react'
+import { FileText, Search, Filter, RotateCcw, Package, Users, Download, Database, AlertCircle, Key, Mail, Send, Upload } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 export default function Ayarlar() {
@@ -33,6 +33,21 @@ export default function Ayarlar() {
     pages: 0
   })
   const { toast } = useToast()
+
+  // Mail settings state
+  const [mailSettings, setMailSettings] = useState({
+    smtpHost: '',
+    smtpPort: 587,
+    smtpUser: '',
+    smtpPassword: '',
+    fromEmail: '',
+    fromName: 'Halk TV Envanter Sistemi',
+    enableSsl: true
+  })
+  const [mailLoading, setMailLoading] = useState(false)
+  const [testEmail, setTestEmail] = useState('')
+  const [testLoading, setTestLoading] = useState(false)
+  const [importLoading, setImportLoading] = useState(false)
 
   useEffect(() => {
     fetchAuditLogs()
@@ -99,7 +114,7 @@ export default function Ayarlar() {
 
       const response = await fetch(`/api/audit-logs?${params}`)
       const data = await response.json()
-      
+
       setAuditLogs(data.logs || [])
       setPagination(prev => ({ ...prev, ...data.pagination }))
     } catch (error) {
@@ -130,7 +145,10 @@ export default function Ayarlar() {
     'RESTORE_EMPLOYEE': 'Çalışan Geri Yüklendi',
     'ASSIGN_ROLE': 'Rol Atandı',
     'IMPORT_INVENTORY': 'Envanter İçe Aktarıldı',
-    'EXPORT_INVENTORY': 'Envanter Dışa Aktarıldı'
+    'EXPORT_INVENTORY': 'Envanter Dışa Aktarıldı',
+    'CREATE_MAINTENANCE': 'Bakım Kaydı Oluşturuldu',
+    'UPDATE_MAINTENANCE': 'Bakım Kaydı Güncellendi',
+    'DELETE_MAINTENANCE': 'Bakım Kaydı Silindi'
   }
 
   const entityTypeLabels = {
@@ -139,7 +157,8 @@ export default function Ayarlar() {
     'Zimmet': 'Zimmet',
     'Department': 'Departman',
     'User': 'Kullanıcı',
-    'DigitalAsset': 'Dijital Varlık'
+    'DigitalAsset': 'Dijital Varlık',
+    'Maintenance': 'Bakım/Onarım'
   }
 
   const openDetailDialog = (log) => {
@@ -169,6 +188,68 @@ export default function Ayarlar() {
       setBackupStats(data)
     } catch (error) {
       console.error('Backup stats yüklenemedi:', error)
+    }
+  }
+
+  const fetchMailSettings = async () => {
+    setMailLoading(true)
+    try {
+      const response = await fetch('/api/settings/mail')
+      const data = await response.json()
+      setMailSettings(data)
+    } catch (error) {
+      console.error('Mail ayarları yüklenemedi:', error)
+    } finally {
+      setMailLoading(false)
+    }
+  }
+
+  const saveMailSettings = async () => {
+    setMailLoading(true)
+    try {
+      const response = await fetch('/api/settings/mail', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mailSettings)
+      })
+
+      if (!response.ok) {
+        throw new Error('Kaydetme başarısız')
+      }
+
+      toast({ title: 'Başarılı', description: 'Mail ayarları kaydedildi' })
+    } catch (error) {
+      toast({ title: 'Hata', description: 'Mail ayarları kaydedilemedi', variant: 'destructive' })
+    } finally {
+      setMailLoading(false)
+    }
+  }
+
+  const sendTestMail = async () => {
+    if (!testEmail) {
+      toast({ title: 'Hata', description: 'Test email adresi giriniz', variant: 'destructive' })
+      return
+    }
+
+    setTestLoading(true)
+    try {
+      const response = await fetch('/api/settings/mail/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testEmail })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Test maili gönderilemedi')
+      }
+
+      toast({ title: 'Başarılı', description: 'Test maili gönderildi' })
+    } catch (error) {
+      toast({ title: 'Hata', description: error.message, variant: 'destructive' })
+    } finally {
+      setTestLoading(false)
     }
   }
 
@@ -206,6 +287,49 @@ export default function Ayarlar() {
     }
   }
 
+  const handleBackupImport = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setImportLoading(true)
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+
+      // Validate backup format
+      if (!data.exportDate || !data.version) {
+        toast({ title: 'Hata', description: 'Geçersiz yedek dosyası formatı', variant: 'destructive' })
+        return
+      }
+
+      const response = await fetch('/api/backup/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        toast({ title: 'Hata', description: result.error || 'İçe aktarma başarısız', variant: 'destructive' })
+        return
+      }
+
+      toast({
+        title: 'Başarılı',
+        description: `Yedek başarıyla içe aktarıldı. ${result.imported?.total || 0} kayıt yüklendi.`
+      })
+
+      // Refresh stats
+      fetchBackupStats()
+    } catch (error) {
+      toast({ title: 'Hata', description: 'Yedek dosyası okunamadı veya geçersiz format', variant: 'destructive' })
+    } finally {
+      setImportLoading(false)
+      event.target.value = '' // Reset file input
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -217,6 +341,7 @@ export default function Ayarlar() {
         <TabsList>
           <TabsTrigger value="audit-log">İşlem Geçmişi</TabsTrigger>
           <TabsTrigger value="restore" onClick={fetchDeletedItems}>Geri Yükle</TabsTrigger>
+          <TabsTrigger value="mail" onClick={fetchMailSettings}>Mail Ayarları</TabsTrigger>
           <TabsTrigger value="system">Sistem Ayarları</TabsTrigger>
         </TabsList>
 
@@ -233,8 +358,8 @@ export default function Ayarlar() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <div>
                   <Label htmlFor="actionType">İşlem Türü</Label>
-                  <Select 
-                    value={filters.actionType || 'all'} 
+                  <Select
+                    value={filters.actionType || 'all'}
                     onValueChange={(value) => handleFilterChange('actionType', value === 'all' ? '' : value)}
                   >
                     <SelectTrigger>
@@ -253,8 +378,8 @@ export default function Ayarlar() {
 
                 <div>
                   <Label htmlFor="entityType">Varlık Türü</Label>
-                  <Select 
-                    value={filters.entityType || 'all'} 
+                  <Select
+                    value={filters.entityType || 'all'}
                     onValueChange={(value) => handleFilterChange('entityType', value === 'all' ? '' : value)}
                   >
                     <SelectTrigger>
@@ -336,7 +461,7 @@ export default function Ayarlar() {
                             <td className="py-3 px-4 text-sm">
                               {entityTypeLabels[log.entityType] || log.entityType}
                             </td>
-                            <td className="py-3 px-4 text-sm font-mono text-xs">
+                            <td className="py-3 px-4 font-mono text-xs">
                               {log.entityId.substring(0, 8)}...
                             </td>
                             <td className="py-3 px-4 text-right">
@@ -408,6 +533,11 @@ export default function Ayarlar() {
                           </div>
                           <div className="text-xs text-red-500">
                             Silinme: {new Date(env.deletedAt).toLocaleDateString('tr-TR')}
+                            {env.deletedBy && (
+                              <div className="mt-1 font-medium text-gray-700">
+                                *Eylemi Gerçekleştiren: {env.deletedBy} {env.deletedByRole ? `(${env.deletedByRole})` : ''}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <Button size="sm" variant="outline" onClick={() => restoreEnvanter(env.id)}>
@@ -443,6 +573,11 @@ export default function Ayarlar() {
                           </div>
                           <div className="text-xs text-red-500">
                             Silinme: {new Date(cal.deletedAt).toLocaleDateString('tr-TR')}
+                            {cal.deletedBy && (
+                              <div className="mt-1 font-medium text-gray-700">
+                                *Eylemi Gerçekleştiren: {cal.deletedBy} {cal.deletedByRole ? `(${cal.deletedByRole})` : ''}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <Button size="sm" variant="outline" onClick={() => restoreCalisan(cal.id)}>
@@ -453,6 +588,153 @@ export default function Ayarlar() {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="mail">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Mail className="mr-2" size={20} />
+                  Mail Ayarları (SMTP)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-start gap-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <AlertCircle className="text-blue-600 mt-0.5" size={20} />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium mb-1">Mail Bildirimleri Hakkında</p>
+                    <p>Bakım/Onarım kaydı "Tamamlandı" durumuna geçtiğinde, yönetici ve admin kullanıcılara otomatik mail bildirimi gönderilir.</p>
+                  </div>
+                </div>
+
+                {mailLoading ? (
+                  <div className="text-center py-8">Yükleniyor...</div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="smtpHost">SMTP Sunucu</Label>
+                        <Input
+                          id="smtpHost"
+                          placeholder="smtp.example.com"
+                          value={mailSettings.smtpHost}
+                          onChange={(e) => setMailSettings(prev => ({ ...prev, smtpHost: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="smtpPort">SMTP Port</Label>
+                        <Input
+                          id="smtpPort"
+                          type="number"
+                          placeholder="587"
+                          value={mailSettings.smtpPort}
+                          onChange={(e) => setMailSettings(prev => ({ ...prev, smtpPort: parseInt(e.target.value) || 587 }))}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="smtpUser">SMTP Kullanıcı Adı</Label>
+                        <Input
+                          id="smtpUser"
+                          placeholder="user@example.com"
+                          value={mailSettings.smtpUser}
+                          onChange={(e) => setMailSettings(prev => ({ ...prev, smtpUser: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="smtpPassword">SMTP Şifre</Label>
+                        <Input
+                          id="smtpPassword"
+                          type="password"
+                          placeholder={mailSettings.hasPassword ? '••••••••' : 'Şifre giriniz'}
+                          value={mailSettings.smtpPassword}
+                          onChange={(e) => setMailSettings(prev => ({ ...prev, smtpPassword: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="fromEmail">Gönderen Email</Label>
+                        <Input
+                          id="fromEmail"
+                          placeholder="noreply@example.com"
+                          value={mailSettings.fromEmail}
+                          onChange={(e) => setMailSettings(prev => ({ ...prev, fromEmail: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="fromName">Gönderen Adı</Label>
+                        <Input
+                          id="fromName"
+                          placeholder="Halk TV Envanter Sistemi"
+                          value={mailSettings.fromName}
+                          onChange={(e) => setMailSettings(prev => ({ ...prev, fromName: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="enableSsl"
+                        checked={mailSettings.enableSsl}
+                        onChange={(e) => setMailSettings(prev => ({ ...prev, enableSsl: e.target.checked }))}
+                        className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                      />
+                      <Label htmlFor="enableSsl" className="font-normal">SSL/TLS Kullan</Label>
+                    </div>
+
+                    <div className="pt-4 border-t">
+                      <Button
+                        onClick={saveMailSettings}
+                        disabled={mailLoading}
+                        className="bg-teal-500 hover:bg-teal-600"
+                      >
+                        {mailLoading ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Send className="mr-2" size={20} />
+                  Test Maili Gönder
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  Mail ayarlarınızı test etmek için aşağıya email adresi girin.
+                </p>
+                <div className="flex gap-4">
+                  <Input
+                    placeholder="test@example.com"
+                    value={testEmail}
+                    onChange={(e) => setTestEmail(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={sendTestMail}
+                    disabled={testLoading || !testEmail}
+                    variant="outline"
+                  >
+                    {testLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                        Gönderiliyor...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2" size={16} />
+                        Test Maili Gönder
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -586,6 +868,46 @@ export default function Ayarlar() {
                     Yedek dosyası: sistem_yedegi_[tarih]_[zaman].json
                   </p>
                 </div>
+
+                <div className="pt-4 border-t">
+                  <h4 className="font-medium text-sm text-gray-700 mb-3">Yedek İçe Aktar</h4>
+                  <div className="flex items-start gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+                    <AlertCircle className="text-yellow-600 mt-0.5" size={20} />
+                    <div className="text-sm text-yellow-800">
+                      <p className="font-medium mb-1">Dikkat</p>
+                      <p>Yedek içe aktarma, mevcut verilerin üzerine yazar. Bu işlem geri alınamaz.</p>
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleBackupImport}
+                    className="hidden"
+                    id="backup-import"
+                  />
+                  <label htmlFor="backup-import">
+                    <Button
+                      variant="outline"
+                      className="w-full cursor-pointer"
+                      disabled={importLoading}
+                      asChild
+                    >
+                      <span>
+                        {importLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                            İçe Aktarılıyor...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2" size={20} />
+                            Yedek Dosyası Seç
+                          </>
+                        )}
+                      </span>
+                    </Button>
+                  </label>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -632,26 +954,26 @@ export default function Ayarlar() {
               {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
                 <div className="space-y-4">
                   {/* Temel Bilgiler */}
-                  {(selectedLog.details.employeeName || selectedLog.details.departmentName || 
+                  {(selectedLog.details.employeeName || selectedLog.details.departmentName ||
                     selectedLog.details.assetName || selectedLog.details.marka) && (
-                    <div>
-                      <div className="text-sm text-gray-600 mb-2">Etkilenen Kayıt</div>
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        {selectedLog.details.employeeName && (
-                          <div className="text-sm"><strong>Çalışan:</strong> {selectedLog.details.employeeName}</div>
-                        )}
-                        {selectedLog.details.departmentName && (
-                          <div className="text-sm"><strong>Departman:</strong> {selectedLog.details.departmentName}</div>
-                        )}
-                        {selectedLog.details.assetName && (
-                          <div className="text-sm"><strong>Dijital Varlık:</strong> {selectedLog.details.assetName}</div>
-                        )}
-                        {selectedLog.details.marka && (
-                          <div className="text-sm"><strong>Envanter:</strong> {selectedLog.details.marka} {selectedLog.details.model} ({selectedLog.details.seriNumarasi})</div>
-                        )}
+                      <div>
+                        <div className="text-sm text-gray-600 mb-2">Etkilenen Kayıt</div>
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          {selectedLog.details.employeeName && (
+                            <div className="text-sm"><strong>Çalışan:</strong> {selectedLog.details.employeeName}</div>
+                          )}
+                          {selectedLog.details.departmentName && (
+                            <div className="text-sm"><strong>Departman:</strong> {selectedLog.details.departmentName}</div>
+                          )}
+                          {selectedLog.details.assetName && (
+                            <div className="text-sm"><strong>Dijital Varlık:</strong> {selectedLog.details.assetName}</div>
+                          )}
+                          {selectedLog.details.marka && (
+                            <div className="text-sm"><strong>Envanter:</strong> {selectedLog.details.marka} {selectedLog.details.model} ({selectedLog.details.seriNumarasi})</div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {/* Değişiklikler - Before/After */}
                   {selectedLog.details.degisiklikler && Object.keys(selectedLog.details.degisiklikler).length > 0 && (
@@ -694,15 +1016,15 @@ export default function Ayarlar() {
                                 </td>
                                 <td className="py-2 px-3">
                                   <span className="inline-flex items-center px-2 py-0.5 rounded bg-red-100 text-red-800 text-xs">
-                                    {typeof values.onceki === 'boolean' 
-                                      ? (values.onceki ? 'Evet' : 'Hayır') 
+                                    {typeof values.onceki === 'boolean'
+                                      ? (values.onceki ? 'Evet' : 'Hayır')
                                       : (values.onceki || '-')}
                                   </span>
                                 </td>
                                 <td className="py-2 px-3">
                                   <span className="inline-flex items-center px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">
-                                    {typeof values.yeni === 'boolean' 
-                                      ? (values.yeni ? 'Evet' : 'Hayır') 
+                                    {typeof values.yeni === 'boolean'
+                                      ? (values.yeni ? 'Evet' : 'Hayır')
                                       : (values.yeni || '-')}
                                   </span>
                                 </td>
@@ -715,24 +1037,30 @@ export default function Ayarlar() {
                   )}
 
                   {/* Diğer Detaylar (degisiklikler dışındaki alanlar) */}
-                  {Object.keys(selectedLog.details).filter(k => 
+                  {Object.keys(selectedLog.details).filter(k =>
                     !['degisiklikler', 'employeeName', 'departmentName', 'assetName', 'marka', 'model', 'seriNumarasi'].includes(k)
                   ).length > 0 && (
-                    <div>
-                      <div className="text-sm text-gray-600 mb-2">Ek Bilgiler</div>
-                      <div className="bg-gray-50 p-3 rounded-lg space-y-1">
-                        {Object.entries(selectedLog.details)
-                          .filter(([k]) => !['degisiklikler', 'employeeName', 'departmentName', 'assetName', 'marka', 'model', 'seriNumarasi'].includes(k))
-                          .map(([key, value]) => (
-                            <div key={key} className="text-sm">
-                              <strong className="text-gray-600">{key}:</strong>{' '}
-                              <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-                            </div>
-                          ))
-                        }
+                      <div>
+                        <div className="text-sm text-gray-600 mb-2">Ek Bilgiler</div>
+                        <div className="bg-gray-50 p-3 rounded-lg space-y-1">
+                          {Object.entries(selectedLog.details)
+                            .filter(([k]) => !['degisiklikler', 'employeeName', 'departmentName', 'assetName', 'marka', 'model', 'seriNumarasi'].includes(k))
+                            .map(([key, value]) => (
+                              <div key={key} className="text-sm">
+                                <strong className="text-gray-600">{
+                                  key === 'inventoryId' ? 'Envanter' : key
+                                }:</strong>{' '}
+                                {key === 'inventoryId' && selectedLog.inventoryInfo ? (
+                                  <span>{selectedLog.inventoryInfo.marka} {selectedLog.inventoryInfo.model} ({selectedLog.inventoryInfo.seriNumarasi})</span>
+                                ) : (
+                                  <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                                )}
+                              </div>
+                            ))
+                          }
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               )}
             </div>

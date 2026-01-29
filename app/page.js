@@ -11,6 +11,7 @@ import Envanterler from '@/components/pages/Envanterler'
 import EnvanterTipleri from '@/components/pages/EnvanterTipleri'
 import Zimmetler from '@/components/pages/Zimmetler'
 import DijitalVarliklar from '@/components/pages/DijitalVarliklar'
+import BakimOnarim from '@/components/pages/BakimOnarim'
 import Ayarlar from '@/components/pages/Ayarlar'
 import BeninSayfam from '@/components/pages/BeninSayfam'
 import Login from '@/components/pages/Login'
@@ -57,23 +58,30 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar 
-        currentPage={currentPage} 
+      <Sidebar
+        currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
+        user={user}
       />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header user={user} onLogout={handleLogout} />
-        <main className="flex-1 overflow-y-auto p-6">
-          {currentPage === 'dashboard' && <Dashboard />}
-          {currentPage === 'benim-sayfam' && <BeninSayfam />}
+      <div className="flex-1 flex flex-col overflow-hidden w-full">
+        <Header
+          user={user}
+          onLogout={handleLogout}
+          onMenuClick={() => setSidebarOpen(true)}
+          onNavigate={(page) => setCurrentPage(page)}
+        />
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 w-full">
+          {currentPage === 'dashboard' && <Dashboard user={user} />}
+          {currentPage === 'benim-sayfam' && <BeninSayfam user={user} setUser={setUser} />}
           {currentPage === 'calisanlar' && <Calisanlar user={user} />}
           {currentPage === 'departmanlar' && <Departmanlar user={user} />}
           {currentPage === 'envanterler' && <Envanterler user={user} />}
           {currentPage === 'envanter-tipleri' && <EnvanterTipleri />}
           {currentPage === 'zimmetler' && <Zimmetler user={user} />}
           {currentPage === 'dijital-varliklar' && <DijitalVarliklar user={user} />}
+          {currentPage === 'bakim-onarim' && <BakimOnarim user={user} />}
           {currentPage === 'ayarlar' && <Ayarlar />}
         </main>
       </div>
