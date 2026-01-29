@@ -1184,7 +1184,7 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(result))
     }
 
-    if (route.startsWith('/envanterler/') && method === 'GET' && !route.endsWith('/accessories')) {
+    if (route.startsWith('/envanterler/') && method === 'GET' && !route.endsWith('/accessories') && !route.endsWith('/gecmis')) {
       const id = route.split('/')[2]
 
       const envanter = await db.collection('envanterler').findOne({ id, deletedAt: null })

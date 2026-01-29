@@ -1,55 +1,39 @@
 const { MongoClient } = require('mongodb');
 
-// Connection URL from .env (usually mongodb://localhost:27017)
-const url = 'mongodb://localhost:27017';
+const url = 'mongodb+srv://halkhabertv2025_db_user:LWZcAu6HZ0mAdHH6@cluster0.vyctf3o.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 const client = new MongoClient(url);
-const dbName = 'halkhabertv2025-crypto'; // Adjust if needed based on app config, usually assumes default or checks app code
+const dbName = 'zimmet_db';
 
-async function checkInventory() {
+async function check() {
   try {
     await client.connect();
-    console.log('Connected successfully to server');
     const db = client.db(dbName);
     
-    // 1. Find the inventory
-    const serial = 'H66BBT'; // From user screenshot
-    console.log(`Searching for inventory with serial: ${serial}`);
+    const envCount = await db.collection('envanterler').countDocuments({ deletedAt: null });
+    const zimCount = await db.collection('zimmetler').countDocuments({});
     
-    const envanter = await db.collection('envanterler').findOne({ seriNumarasi: serial });
+    console.log('Envanter sayisi: ' + envCount);
+    console.log('Zimmet sayisi: ' + zimCount);
     
-    if (!envanter) {
-      console.log('Inventory NOT FOUND!');
-      return;
+    // Sample zimmet
+    const sample = await db.collection('zimmetler').findOne({});
+    if (sample) {
+      console.log('Ornek Zimmet EnvanterId: ' + sample.envanterId);
+      console.log('Ornek Zimmet Durum: ' + sample.durum);
     }
     
-    console.log('Inventory Found:', {
-      id: envanter.id,
-      _id: envanter._id,
-      marka: envanter.marka,
-      model: envanter.model,
-      durum: envanter.durum
-    });
-
-    // 2. Find Zimmet records
-    const zimmetler = await db.collection('zimmetler').find({ envanterId: envanter.id }).toArray();
-    console.log(`Found ${zimmetler.length} zimmet records for envanterId: ${envanter.id}`);
-    
-    zimmetler.forEach(z => {
-      console.log('Zimmet:', {
-        id: z.id,
-        calisanId: z.calisanId,
-        durum: z.durum,
-        zimmetTarihi: z.zimmetTarihi,
-        iadeTarihi: z.iadeTarihi,
-        deletedAt: z.deletedAt
-      });
-    });
+    // Sample envanter
+    const sampleEnv = await db.collection('envanterler').findOne({ deletedAt: null });
+    if (sampleEnv) {
+      console.log('Ornek Envanter ID: ' + sampleEnv.id);
+      console.log('Ornek Envanter Marka: ' + sampleEnv.marka);
+    }
 
   } catch (err) {
-    console.error('Error:', err);
+    console.error('Error: ' + err.message);
   } finally {
     await client.close();
   }
 }
 
-checkInventory();
+check();
