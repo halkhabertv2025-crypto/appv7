@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -767,7 +767,7 @@ const Envanterler = ({ user }) => {
                 </thead>
                 <tbody>
                   {filteredEnvanterler.map((envanter) => (
-                    <>
+                    <Fragment key={envanter.id}>
                       <tr key={envanter.id} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-4">
                           <Checkbox
@@ -922,7 +922,7 @@ const Envanterler = ({ user }) => {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
