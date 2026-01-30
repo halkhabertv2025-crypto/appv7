@@ -26,6 +26,7 @@ const DijitalVarliklar = ({ user }) => {
   const [filterKategori, setFilterKategori] = useState('all')
   const [filterDurum, setFilterDurum] = useState('all')
   const [showPasswords, setShowPasswords] = useState({})
+  const [showFormPassword, setShowFormPassword] = useState(false)
   const [editingKategori, setEditingKategori] = useState(null)
   const [formData, setFormData] = useState({
     ad: '',
@@ -272,6 +273,7 @@ const DijitalVarliklar = ({ user }) => {
       notlar: ''
     })
     setEditingVarlik(null)
+    setShowFormPassword(false)
   }
 
   const openEditDialog = (varlik) => {
@@ -665,12 +667,22 @@ const DijitalVarliklar = ({ user }) => {
 
               <div>
                 <Label htmlFor="hesapSifre">Hesap Şifresi</Label>
-                <Input
-                  id="hesapSifre"
-                  type="password"
-                  value={formData.hesapSifre}
-                  onChange={(e) => setFormData({ ...formData, hesapSifre: e.target.value })}
-                />
+                <div className="relative">
+                  <Input
+                    id="hesapSifre"
+                    type={showFormPassword ? "text" : "password"}
+                    value={formData.hesapSifre}
+                    onChange={(e) => setFormData({ ...formData, hesapSifre: e.target.value })}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowFormPassword(!showFormPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                  >
+                    {showFormPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               <div>
