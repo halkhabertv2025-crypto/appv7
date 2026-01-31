@@ -1376,6 +1376,34 @@ const Envanterler = ({ user }) => {
                               "{zimmet.aciklama}"
                             </div>
                           )}
+
+                          {/* Fotoğraflar */}
+                          {(zimmet.zimmetFoto || zimmet.iadeFoto) && (
+                            <div className="mt-3 flex gap-4">
+                              {zimmet.zimmetFoto && (
+                                <div className="space-y-1">
+                                  <div className="text-[10px] text-gray-400 uppercase font-bold">Zimmet Foto</div>
+                                  <img 
+                                    src={zimmet.zimmetFoto} 
+                                    alt="Zimmet" 
+                                    className="h-16 w-24 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => window.open(zimmet.zimmetFoto)}
+                                  />
+                                </div>
+                              )}
+                              {zimmet.iadeFoto && (
+                                <div className="space-y-1">
+                                  <div className="text-[10px] text-gray-400 uppercase font-bold">İade Foto</div>
+                                  <img 
+                                    src={zimmet.iadeFoto} 
+                                    alt="İade" 
+                                    className="h-16 w-24 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => window.open(zimmet.iadeFoto)}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

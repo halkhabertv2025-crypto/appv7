@@ -1921,6 +1921,7 @@ async function handleRoute(request, context) {
         iadeTarihi: null,
         durum: "Aktif",
         aciklama: body.aciklama || "",
+        zimmetFoto: body.zimmetFoto || null, // Fotoğraf alanı eklendi
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -2023,6 +2024,7 @@ async function handleRoute(request, context) {
           $set: {
             iadeTarihi: new Date(body.iadeTarihi),
             iadeAlanYetkiliId: body.iadeAlanYetkiliId,
+            iadeFoto: body.iadeFoto || null, // İade fotoğrafı eklendi
             durum: "İade Edildi",
             updatedAt: new Date(),
           },

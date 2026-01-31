@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, User, Plus, Upload, Download, FileText, Trash2 } from 'lucide-react'
+import { X, User, Plus, Upload, Download, FileText, Trash2, Camera, Image } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -31,7 +31,8 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
   const [zimmetFormData, setZimmetFormData] = useState({
     envanterId: '',
     zimmetTarihi: new Date().toISOString().split('T')[0],
-    aciklama: ''
+    aciklama: '',
+    zimmetFoto: null
   })
   const [documents, setDocuments] = useState([])
   const [isUploading, setIsUploading] = useState(false)
@@ -107,7 +108,8 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
       setZimmetFormData({
         envanterId: '',
         zimmetTarihi: new Date().toISOString().split('T')[0],
-        aciklama: ''
+        aciklama: '',
+        zimmetFoto: null
       })
       fetchCalisanZimmetler()
       fetchEnvanterler()
@@ -752,14 +754,100 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
                   required
                 />
               </div>
-              <div>
+               <div>
                 <Label htmlFor="aciklama">Açıklama</Label>
                 <Textarea
                   id="aciklama"
                   value={zimmetFormData.aciklama}
                   onChange={(e) => setZimmetFormData({ ...zimmetFormData, aciklama: e.target.value })}
-                  rows={3}
+                  rows={2}
                 />
+              </div>
+
+              {/* Fotoğraf Yükleme/Çekme Bölümü */}
+              <div className="space-y-2">
+                <Label>Zimmet Fotoğrafı (Opsiyonel)</Label>
+                <div className="flex flex-col items-center gap-4 p-4 border-2 border-dashed rounded-lg bg-gray-50">
+                  {zimmetFormData.zimmetFoto ? (
+                    <div className="relative w-full aspect-video rounded-lg overflow-hidden border">
+                      <img 
+                        src={zimmetFormData.zimmetFoto} 
+                        alt="Zimmet Fotoğrafı" 
+                        className="w-full h-full object-cover"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2 h-8 w-8 p-0"
+                        onClick={() => setZimmetFormData({ ...zimmetFormData, zimmetFoto: null })}
+                      >
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center text-gray-500">
+                      <Camera size={48} className="mb-2 opacity-20" />
+                      <p className="text-sm">Envanterin teslim anındaki durumunu çekin veya yükleyin</p>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2 w-full">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => document.getElementById('camera-input').click()}
+                    >
+                      <Camera size={16} className="mr-2" />
+                      Fotoğraf Çek
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => document.getElementById('file-input').click()}
+                    >
+                      <Image size={16} className="mr-2" />
+                      Dosya Seç
+                    </Button>
+                  </div>
+                  
+                  {/* Gizli inputlar */}
+                  <input
+                    id="camera-input"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        const reader = new FileReader()
+                        reader.onload = (event) => {
+                          setZimmetFormData({ ...zimmetFormData, zimmetFoto: event.target.result })
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                  />
+                  <input
+                    id="file-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        const reader = new FileReader()
+                        reader.onload = (event) => {
+                          setZimmetFormData({ ...zimmetFormData, zimmetFoto: event.target.result })
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter className="mt-6">

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Plus, Search, Download, CheckCircle, FileText, Check, ChevronsUpDown, Eye } from 'lucide-react'
+import { Plus, Search, Download, CheckCircle, FileText, Check, ChevronsUpDown, Eye, Camera, X, Image } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import jsPDF from 'jspdf'
@@ -32,11 +32,13 @@ const Zimmetler = ({ user }) => {
     envanterId: '',
     calisanId: '',
     zimmetTarihi: new Date().toISOString().split('T')[0],
-    aciklama: ''
+    aciklama: '',
+    zimmetFoto: null
   })
   const [iadeFormData, setIadeFormData] = useState({
     iadeTarihi: new Date().toISOString().split('T')[0],
-    envanterDurumu: 'Depoda'
+    envanterDurumu: 'Depoda',
+    iadeFoto: null
   })
   const { toast } = useToast()
 
@@ -144,7 +146,8 @@ const Zimmetler = ({ user }) => {
         envanterId: '',
         calisanId: '',
         zimmetTarihi: new Date().toISOString().split('T')[0],
-        aciklama: ''
+        aciklama: '',
+        zimmetFoto: null
       })
       fetchZimmetler()
       fetchEnvanterler()
@@ -189,7 +192,8 @@ const Zimmetler = ({ user }) => {
       setSelectedZimmet(null)
       setIadeFormData({
         iadeTarihi: new Date().toISOString().split('T')[0],
-        envanterDurumu: 'Depoda'
+        envanterDurumu: 'Depoda',
+        iadeFoto: null
       })
       fetchZimmetler()
       fetchEnvanterler()
@@ -521,15 +525,100 @@ const Zimmetler = ({ user }) => {
                   required
                 />
               </div>
-              <div>
+               <div>
                 <Label htmlFor="aciklama">Açıklama</Label>
                 <Textarea
                   id="aciklama"
                   value={formData.aciklama}
                   onChange={(e) => setFormData({ ...formData, aciklama: e.target.value })}
-                  rows={3}
+                  rows={2}
                   placeholder="Ek bilgiler veya notlar..."
                 />
+              </div>
+
+              {/* Fotoğraf Yükleme/Çekme Bölümü */}
+              <div className="space-y-2">
+                <Label>Zimmet Fotoğrafı (Opsiyonel)</Label>
+                <div className="flex flex-col items-center gap-4 p-4 border-2 border-dashed rounded-lg bg-gray-50">
+                  {formData.zimmetFoto ? (
+                    <div className="relative w-full aspect-video rounded-lg overflow-hidden border">
+                      <img 
+                        src={formData.zimmetFoto} 
+                        alt="Zimmet Fotoğrafı" 
+                        className="w-full h-full object-cover"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2 h-8 w-8 p-0"
+                        onClick={() => setFormData({ ...formData, zimmetFoto: null })}
+                      >
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center text-gray-500">
+                      <Camera size={48} className="mb-2 opacity-20" />
+                      <p className="text-sm">Envanterin teslim anındaki durumunu çekin veya yükleyin</p>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2 w-full">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => document.getElementById('camera-input-new-zimmet').click()}
+                    >
+                      <Camera size={16} className="mr-2" />
+                      Fotoğraf Çek
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => document.getElementById('file-input-new-zimmet').click()}
+                    >
+                      <Image size={16} className="mr-2" />
+                      Dosya Seç
+                    </Button>
+                  </div>
+                  
+                  <input
+                    id="camera-input-new-zimmet"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        const reader = new FileReader()
+                        reader.onload = (event) => {
+                          setFormData({ ...formData, zimmetFoto: event.target.result })
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                  />
+                  <input
+                    id="file-input-new-zimmet"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        const reader = new FileReader()
+                        reader.onload = (event) => {
+                          setFormData({ ...formData, zimmetFoto: event.target.result })
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter className="mt-6">
@@ -645,6 +734,44 @@ const Zimmetler = ({ user }) => {
                 </div>
               </div>
 
+              {/* Zimmet ve İade Fotoğrafları */}
+              <div className="grid grid-cols-2 gap-4 pb-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">Zimmet Fotoğrafı</h4>
+                  {selectedZimmet.zimmetFoto ? (
+                    <div className="border rounded-lg overflow-hidden bg-gray-50 aspect-video flex items-center justify-center">
+                      <img 
+                        src={selectedZimmet.zimmetFoto} 
+                        alt="Zimmet" 
+                        className="w-full h-full object-contain cursor-pointer" 
+                        onClick={() => window.open(selectedZimmet.zimmetFoto)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="border rounded-lg bg-gray-50 aspect-video flex items-center justify-center text-gray-400 text-xs italic">
+                       Fotoğraf yok
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">İade Fotoğrafı</h4>
+                  {selectedZimmet.iadeFoto ? (
+                    <div className="border rounded-lg overflow-hidden bg-gray-50 aspect-video flex items-center justify-center">
+                      <img 
+                        src={selectedZimmet.iadeFoto} 
+                        alt="İade" 
+                        className="w-full h-full object-contain cursor-pointer"
+                        onClick={() => window.open(selectedZimmet.iadeFoto)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="border rounded-lg bg-gray-50 aspect-video flex items-center justify-center text-gray-400 text-xs italic">
+                      {selectedZimmet.iadeTarihi ? 'Fotoğraf yok' : 'Henüz iade edilmedi'}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Kayıt Bilgileri */}
               <div className="border-t pt-4">
                 <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
@@ -727,6 +854,91 @@ const Zimmetler = ({ user }) => {
                     <SelectItem value="Kayıp">Kayıp</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* İade Fotoğrafı Bölümü */}
+              <div className="space-y-2">
+                <Label>İade Fotoğrafı (Opsiyonel)</Label>
+                <div className="flex flex-col items-center gap-4 p-4 border-2 border-dashed rounded-lg bg-gray-50">
+                  {iadeFormData.iadeFoto ? (
+                    <div className="relative w-full aspect-video rounded-lg overflow-hidden border">
+                      <img 
+                        src={iadeFormData.iadeFoto} 
+                        alt="İade Fotoğrafı" 
+                        className="w-full h-full object-cover"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2 h-8 w-8 p-0"
+                        onClick={() => setIadeFormData({ ...iadeFormData, iadeFoto: null })}
+                      >
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center text-gray-500">
+                      <Camera size={48} className="mb-2 opacity-20" />
+                      <p className="text-sm">Envanterin iade anındaki durumunu çekin veya yükleyin</p>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2 w-full">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => document.getElementById('camera-input-iade').click()}
+                    >
+                      <Camera size={16} className="mr-2" />
+                      Fotoğraf Çek
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => document.getElementById('file-input-iade').click()}
+                    >
+                      <Image size={16} className="mr-2" />
+                      Dosya Seç
+                    </Button>
+                  </div>
+                  
+                  <input
+                    id="camera-input-iade"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        const reader = new FileReader()
+                        reader.onload = (event) => {
+                          setIadeFormData({ ...iadeFormData, iadeFoto: event.target.result })
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                  />
+                  <input
+                    id="file-input-iade"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        const reader = new FileReader()
+                        reader.onload = (event) => {
+                          setIadeFormData({ ...iadeFormData, iadeFoto: event.target.result })
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter className="mt-6">
