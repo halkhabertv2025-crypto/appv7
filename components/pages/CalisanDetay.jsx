@@ -178,92 +178,70 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
     }
   }
 
-  const generateZimmetPDF = (zimmet) => {
-    const doc = new jsPDF()
+  const generateZimmetPDF = async (zimmet) => {
+    const { addSignatureSection, loadLogo, loadRobotoFont, createZimmetTable, LEGAL_TEXT_1, LEGAL_TEXT_2 } = await import('@/utils/pdfUtils')
+    
+    // A4 boyutunda PDF oluştur
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    })
+    
+    // Roboto fontunu yükle
+    const fontLoaded = await loadRobotoFont(doc)
+    const fontName = fontLoaded ? 'Roboto' : 'helvetica'
+    
+    const pageWidth = 210
+    let yPos = 10
 
-    const turkishToAscii = (text) => {
-      if (!text) return text
-      const charMap = {
-        'ç': 'c', 'Ç': 'C',
-        'ğ': 'g', 'Ğ': 'G',
-        'ı': 'i', 'İ': 'I',
-        'ö': 'o', 'Ö': 'O',
-        'ş': 's', 'Ş': 'S',
-        'ü': 'u', 'Ü': 'U'
-      }
-      return text.split('').map(char => charMap[char] || char).join('')
+    // 1. Logo - sol üst köşe (Küçültülmüş: 18.9x21.6mm)
+    const logo = await loadLogo()
+    if (logo) {
+      doc.addImage(logo, 'PNG', 15, yPos, 18.9, 21.6)
     }
+    yPos = 45
 
-    // Logo
-    doc.setFontSize(20)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Halk TV', 20, 20)
-
-    // Title
-    doc.setFontSize(18)
-    doc.text('ZIMMET FORMU', 105, 40, { align: 'center' })
-
-    doc.setLineWidth(0.5)
-    doc.line(20, 45, 190, 45)
-
-    // Zimmet Info
+    // 2. Başlık
     doc.setFontSize(12)
-    doc.setFont('helvetica', 'bold')
-    doc.text('ZIMMET BILGILERI', 20, 55)
+    doc.setFont(fontName, 'bold')
+    doc.text('HALKTV TV KİŞİSEL KORUYUCU DONANIM ZİMMET TUTANAĞI', pageWidth / 2, yPos, { align: 'center' })
+    yPos += 15
 
-    doc.setFont('helvetica', 'normal')
-    let yPos = 65
-    doc.text(`Zimmet Tarihi: ${new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')}`, 20, yPos)
-    yPos += 8
-    doc.text(`Durum: ${turkishToAscii(zimmet.durum)}`, 20, yPos)
+    // 3. Yasal metin
+    doc.setFontSize(9)
+    doc.setFont(fontName, 'normal')
+    const splitText1 = doc.splitTextToSize(LEGAL_TEXT_1, pageWidth - 30)
+    doc.text(splitText1, 15, yPos)
+    yPos += splitText1.length * 4 + 8
 
-    // Employee Info
-    yPos += 18
-    doc.setFont('helvetica', 'bold')
-    doc.text('CALISAN BILGILERI', 20, yPos)
-    yPos += 10
+    const splitText2 = doc.splitTextToSize(LEGAL_TEXT_2, pageWidth - 30)
+    doc.text(splitText2, 15, yPos)
+    yPos += splitText2.length * 4 + 15
 
-    doc.setFont('helvetica', 'normal')
-    doc.text(`Ad Soyad: ${turkishToAscii(calisan.adSoyad)}`, 20, yPos)
-    yPos += 8
-    doc.text(`Departman: ${turkishToAscii(calisan.departmanAd)}`, 20, yPos)
-    yPos += 8
-    doc.text(`Email: ${calisan.email || '-'}`, 20, yPos)
-
-    // Inventory Info
-    yPos += 18
-    doc.setFont('helvetica', 'bold')
-    doc.text('ENVANTER BILGILERI', 20, yPos)
-    yPos += 10
-
-    doc.setFont('helvetica', 'normal')
-    doc.text(`Envanter Tipi: ${turkishToAscii(zimmet.envanterBilgisi?.tip || '-')}`, 20, yPos)
-    yPos += 8
-    doc.text(`Marka: ${turkishToAscii(zimmet.envanterBilgisi?.marka || '-')}`, 20, yPos)
-    yPos += 8
-    doc.text(`Model: ${turkishToAscii(zimmet.envanterBilgisi?.model || '-')}`, 20, yPos)
-    yPos += 8
-    doc.text(`Seri Numarasi: ${turkishToAscii(zimmet.envanterBilgisi?.seriNumarasi || '-')}`, 20, yPos)
-
-    // Signature section
-    yPos = 250
-    doc.setLineWidth(0.3)
-    doc.line(20, yPos, 80, yPos)
-    doc.line(110, yPos, 170, yPos)
-
+    // 4. Tablo Başlığı ve Tablo
     doc.setFontSize(10)
-    doc.text('Teslim Eden', 40, yPos + 7, { align: 'center' })
-    doc.text('Teslim Alan (Imza)', 140, yPos + 7, { align: 'center' })
+    doc.setFont(fontName, 'bold')
+    doc.text('ALINAN MALZEMENİN', 20, yPos)
+    yPos += 5
 
-    // Footer
-    doc.setFontSize(8)
-    doc.setTextColor(128)
-    doc.text('Halk TV Zimmet Takip Sistemi', 105, 285, { align: 'center' })
-    doc.text(new Date().toLocaleDateString('tr-TR'), 105, 290, { align: 'center' })
+    const tableData = [[
+      '1',
+      zimmet.envanterBilgisi?.tip || '-',
+      zimmet.envanterBilgisi?.marka || '-',
+      zimmet.envanterBilgisi?.model || '-',
+      '1',
+      zimmet.envanterBilgisi?.seriNumarasi || '-'
+    ]]
+    
+    const finalTableY = createZimmetTable(doc, tableData, yPos)
 
-    // Save
-    const cleanName = turkishToAscii(calisan.adSoyad).replace(/\s+/g, '_')
-    const cleanSerial = turkishToAscii(zimmet.envanterBilgisi?.seriNumarasi || 'dokuman')
+    // 5. İmza bölümü
+    addSignatureSection(doc, finalTableY + 20, calisan.adSoyad, calisan.departmanAd)
+
+    // Kaydet
+    const cleanName = (calisan.adSoyad || 'calisan').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_çğıöşüÇĞİÖŞÜ]/g, '')
+    const cleanSerial = (zimmet.envanterBilgisi?.seriNumarasi || 'dokuman').replace(/[^a-zA-Z0-9_-]/g, '')
     doc.save(`zimmet_${cleanName}_${cleanSerial}.pdf`)
 
     toast({ title: 'Başarılı', description: 'Zimmet PDF\'i indirildi' })
@@ -292,21 +270,10 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
     toast({ title: 'Başarılı', description: 'Zimmet listesi dışa aktarıldı' })
   }
 
-  // Tüm zimmetleri tek PDF'de listele - Örnek formata uygun
-  const generateAllZimmetlerPDF = () => {
-    const turkishToAscii = (text) => {
-      if (!text) return text
-      const charMap = {
-        'ç': 'c', 'Ç': 'C',
-        'ğ': 'g', 'Ğ': 'G',
-        'ı': 'i', 'İ': 'I',
-        'ö': 'o', 'Ö': 'O',
-        'ş': 's', 'Ş': 'S',
-        'ü': 'u', 'Ü': 'U'
-      }
-      return text.split('').map(char => charMap[char] || char).join('')
-    }
-
+  // Tüm zimmetleri tek PDF'de listele
+  const generateAllZimmetlerPDF = async () => {
+    const { addSignatureSection, loadLogo, loadRobotoFont, createZimmetTable, LEGAL_TEXT_1, LEGAL_TEXT_2 } = await import('@/utils/pdfUtils')
+    
     // Sadece aktif zimmetleri al
     const aktifZimmetler = zimmetler.filter(z => z.durum === 'Aktif')
 
@@ -315,122 +282,66 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
       return
     }
 
-    const doc = new jsPDF()
-    const pageWidth = doc.internal.pageSize.getWidth()
+    // A4 boyutunda PDF oluştur
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    })
+    
+    // Roboto fontunu yükle
+    const fontLoaded = await loadRobotoFont(doc)
+    const fontName = fontLoaded ? 'Roboto' : 'helvetica'
+    
+    const pageWidth = 210
+    let yPos = 10
 
-    // Logo / Header - Sol üst
-    doc.setFontSize(24)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(0, 128, 128) // Teal color
-    doc.text('Halk', 20, 20)
-    doc.setTextColor(0, 0, 0)
+    // 1. Logo - sol üst köşe (Küçültülmüş: 18.9x21.6mm)
+    const logo = await loadLogo()
+    if (logo) {
+      doc.addImage(logo, 'PNG', 15, yPos, 18.9, 21.6)
+    }
+    yPos = 45
 
-    // Title - Center
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.text('KISISEL KORUYUCU DONANIM ZIMMET TUTANAGI', pageWidth / 2, 35, { align: 'center' })
+    // 2. Başlık
+    doc.setFontSize(12)
+    doc.setFont(fontName, 'bold')
+    doc.text('HALKTV TV KİŞİSEL KORUYUCU DONANIM ZİMMET TUTANAĞI', pageWidth / 2, yPos, { align: 'center' })
+    yPos += 15
 
-    // Legal text paragraph 1
+    // 3. Yasal metin
     doc.setFontSize(9)
-    doc.setFont('helvetica', 'normal')
-    const legalText1 = `Asagida dokumu yapilan Kisisel Koruyucu malzemeleri teslim aldim ve nasil kullanacagi konusunda egitim aldim. Tarafima verilen bu malzemeleri bu isyerinde kullanmayi ve kullanim suresi doluncaya kadar muhafaza etmeyi, kayboldugunda veya kotu kullanim nedeniyle hasarlandiginda fatura bedelinin ucretimden kesilecegini ve derhal yenisini almak uzere yetkiliye basvuracagimi taahhut ederim.`
+    doc.setFont(fontName, 'normal')
+    const splitText1 = doc.splitTextToSize(LEGAL_TEXT_1, pageWidth - 30)
+    doc.text(splitText1, 15, yPos)
+    yPos += splitText1.length * 4 + 8
 
-    const splitText1 = doc.splitTextToSize(legalText1, pageWidth - 40)
-    doc.text(splitText1, 20, 45)
+    const splitText2 = doc.splitTextToSize(LEGAL_TEXT_2, pageWidth - 30)
+    doc.text(splitText2, 15, yPos)
+    yPos += splitText2.length * 4 + 15
 
-    // Legal text paragraph 2
-    const legalText2 = `Ayrica bu malzemeleri kullanmadigim takdirde birinci uyarida bir gunluk yevmiyemin kesilecegini, ikinci uyarida ise 6331 Sayili Is Kanunun ilgili maddesi uyarinca gorevime son verilecegini kabul ederim.`
+    // 4. Tablo Başlığı ve Tablo
+    doc.setFontSize(10)
+    doc.setFont(fontName, 'bold')
+    doc.text('ALINAN MALZEMENİN', 20, yPos)
+    yPos += 5
 
-    const splitText2 = doc.splitTextToSize(legalText2, pageWidth - 40)
-    doc.text(splitText2, 20, 68)
-
-    // Table Title
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text('ALINAN MALZEMENIN', 20, 100)
-
-    // Create table data
     const tableData = aktifZimmetler.map((zimmet, index) => [
       (index + 1).toString(),
-      turkishToAscii(zimmet.envanterBilgisi?.tip || '-'),
-      turkishToAscii(zimmet.envanterBilgisi?.marka || '-'),
-      turkishToAscii(zimmet.envanterBilgisi?.model || '-'),
-      '1', // Adedi
-      turkishToAscii(zimmet.envanterBilgisi?.seriNumarasi || '-')
+      zimmet.envanterBilgisi?.tip || '-',
+      zimmet.envanterBilgisi?.marka || '-',
+      zimmet.envanterBilgisi?.model || '-',
+      '1',
+      zimmet.envanterBilgisi?.seriNumarasi || '-'
     ])
 
-    // Use autoTable for the table
-    autoTable(doc, {
-      startY: 105,
-      head: [['NO', 'ENVANTER TIPI', 'MARKA', 'MODEL', 'ADEDI', 'SERI NUMARASI']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: {
-        fillColor: [220, 220, 220],
-        textColor: [0, 0, 0],
-        fontSize: 9,
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      bodyStyles: {
-        fontSize: 9,
-        halign: 'center'
-      },
-      columnStyles: {
-        0: { cellWidth: 15 },
-        1: { cellWidth: 35 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 20 },
-        5: { cellWidth: 40 }
-      },
-      margin: { left: 20, right: 20 }
-    })
+    const finalTableY = createZimmetTable(doc, tableData, yPos)
 
-    // Get final Y position after table
-    let finalY = doc.lastAutoTable.finalY + 20
+    // 5. İmza bölümü
+    addSignatureSection(doc, finalTableY + 20, calisan.adSoyad, calisan.departmanAd)
 
-    // Date field
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    const today = new Date()
-    doc.text(`TARIH: ${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()}`, 20, finalY)
-
-    // Signature section
-    finalY += 15
-
-    // Left side - Teslim Eden
-    doc.setFont('helvetica', 'bold')
-    doc.text('TESLIM EDEN', 50, finalY, { align: 'center' })
-
-    doc.setFont('helvetica', 'normal')
-    doc.text('ADI SOYADI:', 20, finalY + 12)
-    doc.line(50, finalY + 12, 90, finalY + 12)
-
-    doc.text('CALISTIGI BOLUM:', 20, finalY + 22)
-    doc.line(60, finalY + 22, 90, finalY + 22)
-
-    doc.text('IMZASI:', 20, finalY + 32)
-    doc.line(45, finalY + 32, 90, finalY + 32)
-
-    // Right side - Teslim Alan
-    doc.setFont('helvetica', 'bold')
-    doc.text('TESLIM ALAN', 150, finalY, { align: 'center' })
-
-    doc.setFont('helvetica', 'normal')
-    doc.text('ADI SOYADI:', 110, finalY + 12)
-    doc.text(turkishToAscii(calisan.adSoyad), 145, finalY + 12)
-    doc.line(140, finalY + 12, 190, finalY + 12)
-
-    doc.text('CALISTIGI BOLUM:', 110, finalY + 22)
-    doc.text(turkishToAscii(calisan.departmanAd || ''), 155, finalY + 22)
-    doc.line(150, finalY + 22, 190, finalY + 22)
-
-    doc.text('IMZASI:', 110, finalY + 32)
-    doc.line(135, finalY + 32, 190, finalY + 32)
-
-    // Save
-    const cleanName = turkishToAscii(calisan.adSoyad).replace(/\s+/g, '_')
+    // Kaydet
+    const cleanName = (calisan.adSoyad || 'calisan').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_çğıöşüÇĞİÖŞÜ]/g, '')
     doc.save(`zimmet_tutanagi_${cleanName}_${new Date().toISOString().split('T')[0]}.pdf`)
 
     toast({ title: 'Başarılı', description: 'Zimmet tutanağı PDF olarak indirildi' })

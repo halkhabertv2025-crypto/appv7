@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { FileText, Search, Filter, RotateCcw, Package, Users, Download, Database, AlertCircle, Key, Mail, Send, Upload } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { decompressBackupFile } from '@/utils/compression'
 
 export default function Ayarlar() {
   const [auditLogs, setAuditLogs] = useState([])
@@ -263,14 +264,23 @@ export default function Ayarlar() {
         return
       }
 
-      const data = await response.json()
+      const contentType = response.headers.get('content-type')
+      let blob
+      let filename
 
-      // Create JSON file and download
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      if (contentType && contentType.includes('gzip')) {
+        blob = await response.blob()
+        filename = `sistem_yedeği_${new Date().toISOString().split('T')[0]}_${Date.now()}.json.gz`
+      } else {
+        const data = await response.json()
+        blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+        filename = `sistem_yedeği_${new Date().toISOString().split('T')[0]}_${Date.now()}.json`
+      }
+
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `sistem_yedeği_${new Date().toISOString().split('T')[0]}_${Date.now()}.json`
+      link.download = filename
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -292,9 +302,9 @@ export default function Ayarlar() {
     if (!file) return
 
     setImportLoading(true)
+    setImportLoading(true)
     try {
-      const text = await file.text()
-      const data = JSON.parse(text)
+      const data = await decompressBackupFile(file)
 
       // Validate backup format
       if (!data.exportDate || !data.version) {

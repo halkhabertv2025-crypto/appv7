@@ -207,124 +207,73 @@ const Zimmetler = ({ user }) => {
     setShowIadeDialog(true)
   }
 
-  const generateZimmetPDF = (zimmet) => {
-    const doc = new jsPDF()
+  const generateZimmetPDF = async (zimmet) => {
+    const { addSignatureSection, loadLogo, loadRobotoFont, createZimmetTable, LEGAL_TEXT_1, LEGAL_TEXT_2 } = await import('@/utils/pdfUtils')
     
-    // Türkçe karakter desteği için encoding ayarı
-    doc.setLanguage("tr")
+    // A4 boyutunda PDF oluştur
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    })
     
-    // Helper function to convert Turkish characters for PDF
-    const turkishToAscii = (text) => {
-      if (!text) return text
-      const charMap = {
-        'ç': 'c', 'Ç': 'C',
-        'ğ': 'g', 'Ğ': 'G',
-        'ı': 'i', 'İ': 'I',
-        'ö': 'o', 'Ö': 'O',
-        'ş': 's', 'Ş': 'S',
-        'ü': 'u', 'Ü': 'U'
-      }
-      return text.split('').map(char => charMap[char] || char).join('')
+    // Roboto fontunu yükle (Artık sistemdeki lokal dosyadan yüklüyor)
+    const fontLoaded = await loadRobotoFont(doc)
+    const fontName = fontLoaded ? 'Roboto' : 'helvetica'
+    
+    const pageWidth = 210
+    let yPos = 10
+
+    // 1. Logo - sol üst köşe (Küçültülmüş: 18.9x21.6mm)
+    const logo = await loadLogo()
+    if (logo) {
+      doc.addImage(logo, 'PNG', 15, yPos, 18.9, 21.6)
     }
-    
-    // Add logo if available
-    doc.setFontSize(20)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Halk TV', 20, 20)
-    
-    // Title - using ASCII equivalent
-    doc.setFontSize(18)
-    doc.text('ZIMMET FORMU', 105, 40, { align: 'center' })
-    
-    // Line
-    doc.setLineWidth(0.5)
-    doc.line(20, 45, 190, 45)
-    
-    // Zimmet Info
+    yPos = 45
+
+    // 2. Başlık
     doc.setFontSize(12)
-    doc.setFont('helvetica', 'bold')
-    doc.text('ZIMMET BILGILERI', 20, 55)
-    
-    doc.setFont('helvetica', 'normal')
-    const zimmetInfo = [
-      `Zimmet Tarihi: ${new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')}`,
-      `Zimmet Durumu: ${turkishToAscii(zimmet.durum)}`,
-      zimmet.iadeTarihi ? `Iade Tarihi: ${new Date(zimmet.iadeTarihi).toLocaleDateString('tr-TR')}` : '',
-      zimmet.iadeAlanYetkili ? `Iade Alan Yetkili: ${turkishToAscii(zimmet.iadeAlanYetkili.adSoyad)}` : ''
-    ].filter(Boolean)
-    
-    let yPos = 65
-    zimmetInfo.forEach(info => {
-      doc.text(info, 20, yPos)
-      yPos += 8
-    })
-    
-    // Employee Info
-    yPos += 10
-    doc.setFont('helvetica', 'bold')
-    doc.text('CALISAN BILGILERI', 20, yPos)
-    yPos += 10
-    
-    doc.setFont('helvetica', 'normal')
-    doc.text(`Ad Soyad: ${turkishToAscii(zimmet.calisanAd)}`, 20, yPos)
-    yPos += 8
-    doc.text(`Departman: ${turkishToAscii(zimmet.departmanAd)}`, 20, yPos)
-    
-    // Inventory Info
-    yPos += 18
-    doc.setFont('helvetica', 'bold')
-    doc.text('ENVANTER BILGILERI', 20, yPos)
-    yPos += 10
-    
-    doc.setFont('helvetica', 'normal')
-    const envanterInfo = [
-      `Envanter Tipi: ${turkishToAscii(zimmet.envanterBilgisi?.tip || '-')}`,
-      `Marka: ${turkishToAscii(zimmet.envanterBilgisi?.marka || '-')}`,
-      `Model: ${turkishToAscii(zimmet.envanterBilgisi?.model || '-')}`,
-      `Seri Numarasi: ${turkishToAscii(zimmet.envanterBilgisi?.seriNumarasi || '-')}`
-    ]
-    
-    envanterInfo.forEach(info => {
-      doc.text(info, 20, yPos)
-      yPos += 8
-    })
-    
-    // Description
-    if (zimmet.aciklama) {
-      yPos += 10
-      doc.setFont('helvetica', 'bold')
-      doc.text('ACIKLAMA', 20, yPos)
-      yPos += 10
-      doc.setFont('helvetica', 'normal')
-      const convertedDesc = turkishToAscii(zimmet.aciklama)
-      const splitText = doc.splitTextToSize(convertedDesc, 170)
-      doc.text(splitText, 20, yPos)
-      yPos += splitText.length * 7
-    }
-    
-    // Signature section
-    yPos = 250
-    doc.setLineWidth(0.3)
-    doc.line(20, yPos, 80, yPos)
-    doc.line(110, yPos, 170, yPos)
-    
+    doc.setFont(fontName, 'bold')
+    doc.text('HALKTV TV KİŞİSEL KORUYUCU DONANIM ZİMMET TUTANAĞI', pageWidth / 2, yPos, { align: 'center' })
+    yPos += 15
+
+    // 3. Yasal metin
+    doc.setFontSize(9)
+    doc.setFont(fontName, 'normal')
+    const splitText1 = doc.splitTextToSize(LEGAL_TEXT_1, pageWidth - 30)
+    doc.text(splitText1, 15, yPos)
+    yPos += splitText1.length * 4 + 8
+
+    const splitText2 = doc.splitTextToSize(LEGAL_TEXT_2, pageWidth - 30)
+    doc.text(splitText2, 15, yPos)
+    yPos += splitText2.length * 4 + 15
+
+    // 4. Tablo Başlığı ve Tablo
     doc.setFontSize(10)
-    doc.text('Teslim Eden', 40, yPos + 7, { align: 'center' })
-    doc.text('Teslim Alan (Imza)', 140, yPos + 7, { align: 'center' })
+    doc.setFont(fontName, 'bold')
+    doc.text('ALINAN MALZEMENİN', 20, yPos)
+    yPos += 5
+
+    const tableData = [[
+      '1',
+      zimmet.envanterBilgisi?.tip || '-',
+      zimmet.envanterBilgisi?.marka || '-',
+      zimmet.envanterBilgisi?.model || '-',
+      '1',
+      zimmet.envanterBilgisi?.seriNumarasi || '-'
+    ]]
     
-    // Footer
-    doc.setFontSize(8)
-    doc.setTextColor(128)
-    doc.text('Halk TV Zimmet Takip Sistemi', 105, 285, { align: 'center' })
-    doc.text(new Date().toLocaleDateString('tr-TR'), 105, 290, { align: 'center' })
+    const finalTableY = createZimmetTable(doc, tableData, yPos)
+
+    // 5. İmza bölümü
+    addSignatureSection(doc, finalTableY + 20, zimmet.calisanAd, zimmet.departmanAd)
+
+    // Kaydet
+    const cleanName = (zimmet.calisanAd || 'calisan').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_çğıöşüÇĞİÖŞÜ]/g, '')
+    const cleanSerial = (zimmet.envanterBilgisi?.seriNumarasi || 'dokuman').replace(/[^a-zA-Z0-9_-]/g, '')
+    doc.save(`zimmet_${cleanName}_${cleanSerial}.pdf`)
     
-    // Save - ASCII filename
-    const cleanName = turkishToAscii(zimmet.calisanAd).replace(/\s+/g, '_')
-    const cleanSerial = turkishToAscii(zimmet.envanterBilgisi?.seriNumarasi || 'dokuman')
-    const fileName = `zimmet_${cleanName}_${cleanSerial}.pdf`
-    doc.save(fileName)
-    
-    toast({ title: 'Basarili', description: 'Zimmet PDF\'i indirildi' })
+    toast({ title: 'Başarılı', description: 'Zimmet PDF\'i indirildi' })
   }
 
   const openCreateDialog = () => {

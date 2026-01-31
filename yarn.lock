@@ -49,6 +49,11 @@
   resolved "https://registry.npmjs.org/@floating-ui/utils/-/utils-0.2.10.tgz"
   integrity sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==
 
+"@fontsource/roboto@^5.2.9":
+  version "5.2.9"
+  resolved "https://registry.npmjs.org/@fontsource/roboto/-/roboto-5.2.9.tgz"
+  integrity sha512-ZTkyHiPk74B/aj8BZWbsxD5Yu+Lq+nR64eV4wirlrac2qXR7jYk2h6JlLYuOuoruTkGQWNw2fMuKNavw7/rg0w==
+
 "@hookform/resolvers@^5.1.1":
   version "5.2.2"
   resolved "https://registry.npmjs.org/@hookform/resolvers/-/resolvers-5.2.2.tgz"

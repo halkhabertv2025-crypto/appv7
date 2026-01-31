@@ -2,6 +2,10 @@ import { MongoClient } from "mongodb";
 import { v4 as uuidv4 } from "uuid";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { gzip } from "zlib";
+import { promisify } from "util";
+
+const gzipAsync = promisify(gzip);
 
 // MongoDB connection
 let client;
@@ -3027,117 +3031,7 @@ async function handleRoute(request, context) {
       return handleCORS(NextResponse.json({ success: true }));
     }
 
-    // Backup Stats Endpoint
-    if (route === "/backup/stats" && method === "GET") {
-      const envanterler = await db
-        .collection("envanterler")
-        .countDocuments({ deletedAt: null });
-      const calisanlar = await db
-        .collection("calisanlar")
-        .countDocuments({ deletedAt: null });
-      const zimmetler = await db
-        .collection("zimmetler")
-        .countDocuments({ deletedAt: null });
-      const departmanlar = await db
-        .collection("departmanlar")
-        .countDocuments({ deletedAt: null });
-      const envanterTipleri = await db
-        .collection("envanter_tipleri")
-        .countDocuments({ deletedAt: null });
-      const auditLogs = await db.collection("audit_logs").countDocuments({});
-      const digitalAssets = await db
-        .collection("digital_assets")
-        .countDocuments({ deletedAt: null });
-      const digitalAssetCategories = await db
-        .collection("digital_asset_categories")
-        .countDocuments({ deletedAt: null });
 
-      return handleCORS(
-        NextResponse.json({
-          envanterler,
-          calisanlar,
-          zimmetler,
-          departmanlar,
-          envanterTipleri,
-          auditLogs,
-          digitalAssets,
-          digitalAssetCategories,
-        }),
-      );
-    }
-
-    // Backup Export Endpoint
-    if (route === "/backup/export" && method === "GET") {
-      const envanterler = await db
-        .collection("envanterler")
-        .find({ deletedAt: null })
-        .toArray();
-      const calisanlar = await db
-        .collection("calisanlar")
-        .find({ deletedAt: null })
-        .toArray();
-      const zimmetler = await db
-        .collection("zimmetler")
-        .find({ deletedAt: null })
-        .toArray();
-      const departmanlar = await db
-        .collection("departmanlar")
-        .find({ deletedAt: null })
-        .toArray();
-      const envanterTipleri = await db
-        .collection("envanter_tipleri")
-        .find({ deletedAt: null })
-        .toArray();
-      const auditLogs = await db.collection("audit_logs").find({}).toArray();
-      const digitalAssets = await db
-        .collection("digital_assets")
-        .find({ deletedAt: null })
-        .toArray();
-      const digitalAssetCategories = await db
-        .collection("digital_asset_categories")
-        .find({ deletedAt: null })
-        .toArray();
-
-      await createAuditLog(
-        "system",
-        "System",
-        "EXPORT_SYSTEM_BACKUP",
-        "System",
-        "backup",
-        {
-          timestamp: new Date(),
-          recordCounts: {
-            envanterler: envanterler.length,
-            calisanlar: calisanlar.length,
-            zimmetler: zimmetler.length,
-            departmanlar: departmanlar.length,
-            envanterTipleri: envanterTipleri.length,
-            auditLogs: auditLogs.length,
-            digitalAssets: digitalAssets.length,
-            digitalAssetCategories: digitalAssetCategories.length,
-          },
-        },
-      );
-
-      return handleCORS(
-        NextResponse.json({
-          exportDate: new Date().toISOString(),
-          version: "1.0",
-          collections: {
-            envanterler: envanterler.map(({ _id, ...rest }) => rest),
-            calisanlar: calisanlar.map(({ _id, ...rest }) => rest),
-            zimmetler: zimmetler.map(({ _id, ...rest }) => rest),
-            departmanlar: departmanlar.map(({ _id, ...rest }) => rest),
-            envanterTipleri: envanterTipleri.map(({ _id, ...rest }) => rest),
-            auditLogs: auditLogs.map(({ _id, ...rest }) => rest),
-            digitalAssets: digitalAssets.map(({ _id, ...rest }) => rest),
-            digitalAssetCategories: digitalAssetCategories.map(
-              ({ _id, ...rest }) => rest,
-            ),
-          },
-        }),
-      );
-    }
 
     // ============= AMORTISMAN (Depreciation) =============
     if (route === "/amortisman-raporu" && method === "GET") {
@@ -3769,6 +3663,7 @@ async function handleRoute(request, context) {
         dijitalVarliklar,
         dijitalKategoriler,
         bakimKayitlari,
+        calisanBelgeleri,
       ] = await Promise.all([
         db.collection("envanterler").find({ deletedAt: null }).toArray(),
         db.collection("calisanlar").find({ deletedAt: null }).toArray(),
@@ -3787,28 +3682,63 @@ async function handleRoute(request, context) {
           .find({ deletedAt: null })
           .toArray(),
         db.collection("bakim_kayitlari").find({ deletedAt: null }).toArray(),
+        db.collection("calisan_belgeleri").find({ deletedAt: null }).toArray(),
       ]);
 
       // Remove MongoDB _id from all documents
       const cleanIds = (arr) => arr.map(({ _id, ...rest }) => rest);
 
-      return handleCORS(
-        NextResponse.json({
-          version: "1.0",
-          exportDate: new Date().toISOString(),
-          data: {
-            envanterler: cleanIds(envanterler),
-            calisanlar: cleanIds(calisanlar),
-            zimmetler: cleanIds(zimmetler),
-            departmanlar: cleanIds(departmanlar),
-            envanterTipleri: cleanIds(envanterTipleri),
-            auditLogs: cleanIds(auditLogs),
-            dijitalVarliklar: cleanIds(dijitalVarliklar),
-            dijitalKategoriler: cleanIds(dijitalKategoriler),
-            bakimKayitlari: cleanIds(bakimKayitlari),
+      await createAuditLog(
+        "system",
+        requestingUser.adSoyad,
+        "EXPORT_SYSTEM_BACKUP",
+        "System",
+        "backup",
+        {
+          timestamp: new Date(),
+          recordCounts: {
+            envanterler: envanterler.length,
+            calisanlar: calisanlar.length,
+            zimmetler: zimmetler.length,
+            departmanlar: departmanlar.length,
+            envanterTipleri: envanterTipleri.length,
+            auditLogs: auditLogs.length,
+            dijitalVarliklar: dijitalVarliklar.length,
+            dijitalKategoriler: dijitalKategoriler.length,
+            bakimKayitlari: bakimKayitlari.length,
+            calisanBelgeleri: calisanBelgeleri.length,
           },
-        }),
+        },
       );
+
+      const backupData = {
+        version: "1.0",
+        exportDate: new Date().toISOString(),
+        data: {
+          envanterler: cleanIds(envanterler),
+          calisanlar: cleanIds(calisanlar),
+          zimmetler: cleanIds(zimmetler),
+          departmanlar: cleanIds(departmanlar),
+          envanterTipleri: cleanIds(envanterTipleri),
+          auditLogs: cleanIds(auditLogs),
+          dijitalVarliklar: cleanIds(dijitalVarliklar),
+          dijitalKategoriler: cleanIds(dijitalKategoriler),
+          bakimKayitlari: cleanIds(bakimKayitlari),
+          calisanBelgeleri: cleanIds(calisanBelgeleri),
+        },
+      };
+
+      const jsonString = JSON.stringify(backupData);
+      const compressed = await gzipAsync(Buffer.from(jsonString));
+
+      const response = new NextResponse(compressed);
+      response.headers.set("Content-Type", "application/gzip");
+      response.headers.set(
+        "Content-Disposition",
+        'attachment; filename="backup.json.gz"',
+      );
+
+      return handleCORS(response);
     }
 
     if (route === "/backup/import" && method === "POST") {
@@ -3851,6 +3781,7 @@ async function handleRoute(request, context) {
             data: data.dijitalKategoriler,
           },
           { name: "bakim_kayitlari", data: data.bakimKayitlari },
+          { name: "calisan_belgeleri", data: data.calisanBelgeleri },
         ];
 
         for (const col of collections) {
