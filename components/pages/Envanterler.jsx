@@ -889,6 +889,7 @@ const Envanterler = ({ user }) => {
                                           <span className={cn(
                                             "inline-flex items-center px-1.5 py-0.5 rounded text-xs",
                                             aks.durum === 'Depoda' && "bg-orange-100 text-orange-700",
+                                            aks.durum === 'Zimmetli' && "bg-green-100 text-green-700",
                                             aks.durum === 'Aktif' && "bg-green-100 text-green-700",
                                             aks.durum === 'Arızalı' && "bg-red-100 text-red-700"
                                           )}>

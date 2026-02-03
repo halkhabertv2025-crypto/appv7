@@ -1937,6 +1937,14 @@ async function handleRoute(request, context) {
           { $set: { durum: "Zimmetli", updatedAt: new Date() } },
         );
 
+      // Update all accessories' status to Zimmetli
+      await db
+        .collection("inventory_accessories")
+        .updateMany(
+          { inventoryId: body.envanterId, deletedAt: null },
+          { $set: { durum: "Zimmetli", updatedAt: new Date() } },
+        );
+
       // Get envanter and calisan info for audit log
       const envanter = await db
         .collection("envanterler")
@@ -2036,6 +2044,14 @@ async function handleRoute(request, context) {
         .collection("envanterler")
         .updateOne(
           { id: zimmet.envanterId },
+          { $set: { durum: body.envanterDurumu, updatedAt: new Date() } },
+        );
+
+      // Update all accessories' status to match parent inventory
+      await db
+        .collection("inventory_accessories")
+        .updateMany(
+          { inventoryId: zimmet.envanterId, deletedAt: null },
           { $set: { durum: body.envanterDurumu, updatedAt: new Date() } },
         );
 
