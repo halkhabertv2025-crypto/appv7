@@ -12,7 +12,7 @@ import { FileText, Search, Filter, RotateCcw, Package, Users, Download, Database
 import { useToast } from '@/hooks/use-toast'
 import { decompressBackupFile } from '@/utils/compression'
 
-export default function Ayarlar() {
+export default function Ayarlar({ user }) {
   const [auditLogs, setAuditLogs] = useState([])
   const [deletedEnvanterler, setDeletedEnvanterler] = useState([])
   const [deletedCalisanlar, setDeletedCalisanlar] = useState([])
@@ -184,7 +184,9 @@ export default function Ayarlar() {
 
   const fetchBackupStats = async () => {
     try {
-      const response = await fetch('/api/backup/stats')
+      const response = await fetch('/api/backup/stats', {
+        headers: { 'x-user-id': user?.id }
+      })
       const data = await response.json()
       setBackupStats(data)
     } catch (error) {
@@ -257,7 +259,9 @@ export default function Ayarlar() {
   const handleFullBackup = async () => {
     setExportLoading(true)
     try {
-      const response = await fetch('/api/backup/export')
+      const response = await fetch('/api/backup/export', {
+        headers: { 'x-user-id': user?.id }
+      })
 
       if (!response.ok) {
         toast({ title: 'Hata', description: 'Yedekleme başarısız', variant: 'destructive' })
@@ -314,7 +318,10 @@ export default function Ayarlar() {
 
       const response = await fetch('/api/backup/import', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': user?.id
+        },
         body: JSON.stringify(data)
       })
 

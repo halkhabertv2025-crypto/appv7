@@ -1541,7 +1541,7 @@ async function handleRoute(request, context) {
       );
     }
 
-    if (route.startsWith("/envanterler/") && method === "PUT") {
+    if (route.startsWith("/envanterler/") && method === "PUT" && !route.includes("/accessories")) {
       const id = route.split("/")[2];
       const body = await request.json();
 
@@ -3620,8 +3620,8 @@ async function handleRoute(request, context) {
       }
 
       const requestingUser = await db.collection('calisanlar').findOne({ id: authHeader, deletedAt: null })
-      if (!requestingUser || (!requestingUser.adminYetkisi && !requestingUser.yoneticiYetkisi)) {
-        return handleCORS(NextResponse.json({ error: "Bu işlem için yetkiniz yok" }, { status: 403 }))
+      if (!requestingUser || !requestingUser.yoneticiYetkisi) {
+        return handleCORS(NextResponse.json({ error: "Bu işlem için 'Yönetici' yetkisi gereklidir" }, { status: 403 }))
       }
 
       const [
@@ -3668,8 +3668,8 @@ async function handleRoute(request, context) {
       }
 
       const requestingUser = await db.collection('calisanlar').findOne({ id: authHeader, deletedAt: null })
-      if (!requestingUser || !requestingUser.adminYetkisi) {
-        return handleCORS(NextResponse.json({ error: "Sadece adminler yedek alabilir" }, { status: 403 }))
+      if (!requestingUser || !requestingUser.yoneticiYetkisi) {
+        return handleCORS(NextResponse.json({ error: "Sadece 'Yönetici' yetkisi olanlar yedek alabilir" }, { status: 403 }))
       }
       const [
         envanterler,
@@ -3767,8 +3767,8 @@ async function handleRoute(request, context) {
       }
 
       const requestingUser = await db.collection('calisanlar').findOne({ id: authHeader, deletedAt: null })
-      if (!requestingUser || !requestingUser.adminYetkisi) {
-        return handleCORS(NextResponse.json({ error: "Sadece adminler yedek yükleyebilir" }, { status: 403 }))
+      if (!requestingUser || !requestingUser.yoneticiYetkisi) {
+        return handleCORS(NextResponse.json({ error: "Sadece 'Yönetici' yetkisi olanlar yedek yükleyebilir" }, { status: 403 }))
       }
 
       const body = await request.json();

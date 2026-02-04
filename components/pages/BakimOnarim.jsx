@@ -596,14 +596,42 @@ const BakimOnarim = ({ user }) => {
                                         onChange={(e) => {
                                             const file = e.target.files?.[0]
                                             if (file) {
-                                                // In a real app, you'd upload to a server
-                                                setFormData({ ...formData, servisFisi: file.name })
+                                                const reader = new FileReader()
+                                                reader.onload = (ev) => {
+                                                    setFormData({ ...formData, servisFisi: ev.target.result })
+                                                }
+                                                reader.readAsDataURL(file)
                                             }
                                         }}
                                         className="flex-1"
                                     />
                                     {formData.servisFisi && (
-                                        <span className="text-sm text-teal-600">{formData.servisFisi}</span>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    // Open base64 string in new tab
+                                                    const win = window.open()
+                                                    win.document.write(
+                                                        `<iframe src="${formData.servisFisi}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
+                                                    )
+                                                }}
+                                            >
+                                                <Upload size={14} className="mr-1" />
+                                                Görüntüle
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="ghost" 
+                                                size="sm"
+                                                className="text-red-500 hover:text-red-700"
+                                                onClick={() => setFormData({ ...formData, servisFisi: null })}
+                                            >
+                                                <Trash2 size={14} />
+                                            </Button>
+                                        </div>
                                     )}
                                 </div>
                             </div>

@@ -530,7 +530,7 @@ const Calisanlar = ({ user }) => {
                   >
                     <QrCode size={16} />
                   </Button>
-                  {user?.adminYetkisi || user?.yoneticiYetkisi && (
+                  {(user?.adminYetkisi || user?.yoneticiYetkisi) && (
                     <Button
                       variant="outline"
                       size="sm"
