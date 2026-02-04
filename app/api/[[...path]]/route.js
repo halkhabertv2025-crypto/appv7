@@ -601,10 +601,10 @@ async function handleRoute(request, context) {
           deletedAt: null,
         });
 
-        if (!requestingUser || !requestingUser.adminYetkisi) {
+        if (!requestingUser || (!requestingUser.adminYetkisi && !requestingUser.yoneticiYetkisi)) {
           return handleCORS(
             NextResponse.json(
-              { error: "Sadece admin kullanıcılar yetki atayabilir" },
+              { error: "Sadece yönetici ve admin kullanıcılar yetki atayabilir" },
               { status: 403 },
             ),
           );
@@ -713,10 +713,10 @@ async function handleRoute(request, context) {
             deletedAt: null,
           });
 
-          if (!requestingUser || !requestingUser.adminYetkisi) {
+          if (!requestingUser || (!requestingUser.adminYetkisi && !requestingUser.yoneticiYetkisi)) {
             return handleCORS(
               NextResponse.json(
-                { error: "Sadece admin kullanıcılar yetki değiştirebilir" },
+                { error: "Sadece yönetici ve admin kullanıcılar yetki değiştirebilir" },
                 { status: 403 },
               ),
             );

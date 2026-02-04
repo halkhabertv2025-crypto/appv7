@@ -530,7 +530,7 @@ const Calisanlar = ({ user }) => {
                   >
                     <QrCode size={16} />
                   </Button>
-                  {user?.adminYetkisi && (
+                  {user?.adminYetkisi || user?.yoneticiYetkisi && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -724,7 +724,7 @@ const Calisanlar = ({ user }) => {
                       Yönetici Yetkisi (Zimmet iadesi alabilir)
                     </Label>
                   </div>
-                  {user?.adminYetkisi && (
+                  {(user?.adminYetkisi || user?.yoneticiYetkisi) && (
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="adminYetkisi"
