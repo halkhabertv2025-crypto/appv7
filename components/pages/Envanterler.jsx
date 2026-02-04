@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus, Package, ChevronDown, ChevronRight, QrCode, Printer, History } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Filter, Download, Upload, UserPlus, Package, ChevronDown, ChevronRight, QrCode, Printer, History, LayoutGrid, List } from 'lucide-react'
 import QRCode from 'qrcode'
 import { useToast } from '@/hooks/use-toast'
 import { cn, toTitleCase } from '@/lib/utils'
@@ -65,6 +65,11 @@ const Envanterler = ({ user }) => {
   const [gecmisLoading, setGecmisLoading] = useState(false)
   const { toast } = useToast()
 
+  // View State
+  const [viewMode, setViewMode] = useState('list') // 'list' | 'board'
+  const [groupBy, setGroupBy] = useState('durum') // 'durum' | 'tip'
+  const [draggedItem, setDraggedItem] = useState(null)
+
   useEffect(() => {
     fetchEnvanterler()
     fetchEnvanterTipleri()
@@ -77,25 +82,33 @@ const Envanterler = ({ user }) => {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(env =>
-        env.marka.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        env.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        env.seriNumarasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        env.envanterTipiAd.toLowerCase().includes(searchTerm.toLowerCase())
+        env.marka?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        env.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        env.seriNumarasi?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        env.envanterTipiAd?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
-    // Status filter
+    // Status filter (In board view, if grouped by status, we usually want to see all columns, but let's allow filtering if user wants)
+    // Actually, if we group by Status, we want to see items moved between statuses. 
+    // If we filter to one status, we can't drag to others easily.
+    // Let's disable specific field filter if we are grouping by it.
+    
     if (filterDurum !== 'all') {
-      filtered = filtered.filter(env => env.durum === filterDurum)
+       if (viewMode === 'list' || (viewMode === 'board' && groupBy !== 'durum')) {
+          filtered = filtered.filter(env => env.durum === filterDurum)
+       }
     }
 
-    // Type filter
     if (filterTip !== 'all') {
-      filtered = filtered.filter(env => env.envanterTipiId === filterTip)
+       if (viewMode === 'list' || (viewMode === 'board' && groupBy !== 'tip')) {
+         filtered = filtered.filter(env => env.envanterTipiId === filterTip)
+       }
     }
 
     setFilteredEnvanterler(filtered)
-  }, [searchTerm, filterDurum, filterTip, envanterler])
+  }, [searchTerm, filterDurum, filterTip, envanterler, viewMode, groupBy])
+
 
   const fetchEnvanterler = async () => {
     try {
@@ -668,272 +681,457 @@ const Envanterler = ({ user }) => {
     setShowDialog(true)
   }
 
+  // --- Drag and Drop Handlers ---
+  const handleDragStart = (e, item) => {
+    setDraggedItem(item)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', JSON.stringify(item))
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = async (e, targetGroupValue) => {
+    e.preventDefault()
+    if (!draggedItem) return
+
+    const currentGroupValue = groupBy === 'durum' ? draggedItem.durum : draggedItem.envanterTipiId
+    if (currentGroupValue === targetGroupValue) return
+
+    if (groupBy === 'durum') {
+      if (targetGroupValue === 'Zimmetli') {
+        openAppointDialog(draggedItem)
+        setDraggedItem(null)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/envanterler/${draggedItem.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+             ...draggedItem,
+             durum: targetGroupValue,
+             userId: user?.id,
+             userName: user?.adSoyad,
+             oldDurum: draggedItem.durum,
+             logStatusChange: true
+          })
+        })
+        
+        if (response.ok) {
+           toast({ title: 'Güncellendi', description: `Durum "${targetGroupValue}" olarak değiştirildi.` })
+           fetchEnvanterler()
+        } else {
+           toast({ title: 'Hata', description: 'Durum güncellenemedi', variant: 'destructive' })
+        }
+      } catch (err) {
+        toast({ title: 'Hata', description: 'Bir sorun oluştu', variant: 'destructive' })
+      }
+    } 
+    else if (groupBy === 'tip') {
+       try {
+        const response = await fetch(`/api/envanterler/${draggedItem.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+             ...draggedItem,
+             envanterTipiId: targetGroupValue,
+             userId: user?.id,
+             userName: user?.adSoyad
+          })
+        })
+        
+        if (response.ok) {
+           toast({ title: 'Güncellendi', description: `Envanter tipi değiştirildi.` })
+           fetchEnvanterler()
+        } else {
+           toast({ title: 'Hata', description: 'Tip güncellenemedi', variant: 'destructive' })
+        }
+      } catch (err) {
+        toast({ title: 'Hata', description: 'Bir sorun oluştu', variant: 'destructive' })
+      }
+    }
+
+    setDraggedItem(null)
+  }
+
+  // --- Helper to get columns based on grouping ---
+  const getColumns = () => {
+    if (groupBy === 'durum') {
+      return ['Depoda', 'Zimmetli', 'Serviste', 'Arızalı', 'Hurda', 'Kayıp']
+    } else {
+      return envanterTipleri.map(t => ({ id: t.id, ad: t.ad }))
+    }
+  }
+
+  const getGroupTitle = (col) => {
+    if (groupBy === 'durum') return col
+    return col.ad
+  }
+
+  const getGroupValue = (col) => {
+    if (groupBy === 'durum') return col
+    // Fix: Ensure we correctly get ID for type
+    return col.id
+  }
+
+  const getGroupColor = (value) => {
+      if (groupBy === 'tip') return 'bg-gray-100'
+      switch (value) {
+          case 'Depoda': return 'bg-blue-50 border-blue-200'
+          case 'Zimmetli': return 'bg-green-50 border-green-200'
+          case 'Serviste': return 'bg-yellow-50 border-yellow-200'
+          case 'Arızalı': return 'bg-red-50 border-red-200'
+          default: return 'bg-gray-50 border-gray-200'
+      }
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header & Controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Envanterler</h2>
-          <p className="text-gray-500">Envanter listesi ve yönetimi</p>
+          <h1 className="text-2xl font-bold text-gray-800">Envanter Yönetimi</h1>
+          <p className="text-gray-500 text-sm mt-1">Cihaz ve ekipman takibi</p>
         </div>
-        <div className="flex space-x-2">
-          <Button onClick={handleExport} variant="outline">
-            <Download size={20} className="mr-2" />
+        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+           <Button 
+             variant={viewMode === 'list' ? 'outline' : 'ghost'} 
+             size="sm" 
+             onClick={() => setViewMode('list')}
+             className={viewMode === 'list' ? 'shadow-sm bg-white' : ''}
+           >
+             <List size={16} className="mr-2"/> Liste
+           </Button>
+           <Button 
+             variant={viewMode === 'board' ? 'outline' : 'ghost'} 
+             size="sm" 
+             onClick={() => setViewMode('board')}
+             className={viewMode === 'board' ? 'shadow-sm bg-white' : ''}
+           >
+             <LayoutGrid size={16} className="mr-2"/> Pano
+           </Button>
+        </div>
+        <div className="flex gap-2">
+           <Button onClick={handleExport} variant="outline" size="sm">
+            <Download size={16} className="mr-2" />
             Dışarı Aktar
           </Button>
-          <Button onClick={openCreateDialog} className="bg-teal-500 hover:bg-teal-600">
-            <Plus size={20} className="mr-2" />
-            Yeni Envanter Oluştur
+          <Button onClick={openCreateDialog} className="bg-teal-500 hover:bg-teal-600" size="sm">
+            <Plus size={16} className="mr-2" />
+            Yeni Envanter
           </Button>
         </div>
       </div>
 
+       {/* Filters & Grouping */}
       <Card>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-            <div className="md:col-span-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex-1 min-w-[200px] relative">
+               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <Input
-                  placeholder="Envanter ara..."
+                  placeholder="Ara..."
+                  className="pl-10"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
                 />
+            </div>
+            
+            {viewMode === 'list' ? (
+              <>
+                 <Select value={filterDurum} onValueChange={setFilterDurum}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="Durum" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tüm Durumlar</SelectItem>
+                      <SelectItem value="Depoda">Depoda</SelectItem>
+                      <SelectItem value="Zimmetli">Zimmetli</SelectItem>
+                      <SelectItem value="Serviste">Serviste</SelectItem>
+                      <SelectItem value="Arızalı">Arızalı</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterTip} onValueChange={setFilterTip}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="Tip" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tüm Tipler</SelectItem>
+                      {envanterTipleri.map(tip => (
+                        <SelectItem key={tip.id} value={tip.id}>{tip.ad}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                 <span className="text-sm font-medium text-gray-500">Grupla:</span>
+                 <Select value={groupBy} onValueChange={setGroupBy}>
+                    <SelectTrigger className="w-[150px]">
+                       <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                       <SelectItem value="durum">Duruma Göre</SelectItem>
+                       <SelectItem value="tip">Tipe Göre</SelectItem>
+                    </SelectContent>
+                 </Select>
               </div>
-            </div>
-            <div>
-              <Select value={filterTip} onValueChange={setFilterTip}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tip seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tüm Tipler</SelectItem>
-                  {envanterTipleri.map(tip => (
-                    <SelectItem key={tip.id} value={tip.id}>{tip.ad}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Select value={filterDurum} onValueChange={setFilterDurum}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Durum seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tüm Durumlar</SelectItem>
-                  <SelectItem value="Depoda">Depoda</SelectItem>
-                  <SelectItem value="Zimmetli">Zimmetli</SelectItem>
-                  <SelectItem value="Arızalı">Arızalı</SelectItem>
-                  <SelectItem value="Kayıp">Kayıp</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            )}
           </div>
 
-          {loading ? (
-            <div className="text-center py-8">Yükleniyor...</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <div className="mb-2 flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBatchPrintQr}
-                  disabled={selectedEnvanterIds.size === 0}
-                >
-                  <Printer className="mr-2" size={16} />
-                  Seçilenleri Qr Kod Yazdır ({selectedEnvanterIds.size})
-                </Button>
-              </div>
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="py-3 px-4 w-10">
-                      <Checkbox
-                        checked={filteredEnvanterler.length > 0 && selectedEnvanterIds.size === filteredEnvanterler.length}
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </th>
-                    <th className="w-8"></th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Envanter Tipi</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Marka</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Model</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Seri Numarası</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Durum</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Zimmetli Kişi</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Zimmet Tarihi</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">İşlemler</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredEnvanterler.map((envanter) => (
-                    <Fragment key={envanter.id}>
-                      <tr key={envanter.id} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <Checkbox
-                            checked={selectedEnvanterIds.has(envanter.id)}
-                            onCheckedChange={() => toggleSelect(envanter.id)}
-                          />
-                        </td>
-                        <td className="py-3 px-2">
-                          <button
-                            onClick={() => toggleRow(envanter.id)}
-                            className="p-1 hover:bg-gray-200 rounded"
-                          >
-                            {expandedRows[envanter.id] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                          </button>
-                        </td>
-                        <td className="py-3 px-4 text-sm font-medium">{envanter.envanterTipiAd}</td>
-                        <td className="py-3 px-4 text-sm">{envanter.marka}</td>
-                        <td className="py-3 px-4 text-sm">{envanter.model}</td>
-                        <td className="py-3 px-4 text-sm font-mono">{envanter.seriNumarasi}</td>
-                        <td className="py-3 px-4">
-                          <span className={cn(
-                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                            envanter.durum === 'Zimmetli' && "bg-green-100 text-green-800",
-                            envanter.durum === 'Depoda' && "bg-orange-100 text-orange-800",
-                            (envanter.durum === 'Arızalı' || envanter.durum === 'Kayıp') && "bg-red-100 text-red-800"
-                          )}>
-                            {envanter.durum}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-sm">
-                          {envanter.zimmetBilgisi?.calisanAd || '-'}
-                        </td>
-                        <td className="py-3 px-4 text-sm">
-                          {envanter.zimmetBilgisi?.zimmetTarihi
-                            ? new Date(envanter.zimmetBilgisi.zimmetTarihi).toLocaleDateString('tr-TR')
-                            : '-'
-                          }
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openAksesuarDialog(envanter)}
-                              title="Aksesuar Ekle"
-                            >
-                              <Package size={16} />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openGecmisDialog(envanter)}
-                              title="İşlem Geçmişi"
-                            >
-                              <History size={16} />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openEditDialog(envanter)}
-                            >
-                              <Pencil size={16} />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleQrCode(envanter)}
-                              title="QR Kod Oluştur"
-                            >
-                              <QrCode size={16} />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(envanter.id)}
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                      {/* Aksesuar satırları */}
-                      {expandedRows[envanter.id] && (
-                        <tr key={`${envanter.id}-accessories`} className="bg-gray-50">
-                          <td colSpan={9} className="py-2 px-4">
-                            <div className="ml-6 p-3 bg-white rounded-lg border">
-                              <div className="flex justify-between items-center mb-2">
-                                <h4 className="font-medium text-sm text-gray-700">Aksesuarlar</h4>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => openAksesuarDialog(envanter)}
-                                  className="h-7 text-xs"
-                                >
-                                  <Plus size={14} className="mr-1" />
-                                  Aksesuar Ekle
-                                </Button>
-                              </div>
-                              {aksesuarlar[envanter.id]?.length > 0 ? (
-                                <table className="w-full text-sm">
-                                  <thead>
-                                    <tr className="border-b text-gray-500">
-                                      <th className="text-left py-1 px-2">Aksesuar Adı</th>
-                                      <th className="text-left py-1 px-2">Marka</th>
-                                      <th className="text-left py-1 px-2">Model</th>
-                                      <th className="text-left py-1 px-2">Seri No</th>
-                                      <th className="text-left py-1 px-2">Durum</th>
-                                      <th className="text-right py-1 px-2">İşlem</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {aksesuarlar[envanter.id].map(aks => (
-                                      <tr key={aks.id} className="border-b last:border-0">
-                                        <td className="py-1 px-2">{aks.ad}</td>
-                                        <td className="py-1 px-2">{aks.marka || '-'}</td>
-                                        <td className="py-1 px-2">{aks.model || '-'}</td>
-                                        <td className="py-1 px-2 font-mono text-xs">{aks.seriNumarasi || '-'}</td>
-                                        <td className="py-1 px-2">
-                                          <span className={cn(
-                                            "inline-flex items-center px-1.5 py-0.5 rounded text-xs",
-                                            aks.durum === 'Depoda' && "bg-orange-100 text-orange-700",
-                                            aks.durum === 'Zimmetli' && "bg-green-100 text-green-700",
-                                            aks.durum === 'Aktif' && "bg-green-100 text-green-700",
-                                            aks.durum === 'Arızalı' && "bg-red-100 text-red-700"
-                                          )}>
-                                            {aks.durum}
-                                          </span>
-                                        </td>
-                                        <td className="py-1 px-2 text-right">
-                                          <div className="flex justify-end gap-1">
-                                            <button
-                                              onClick={() => openAksesuarDialog(envanter, aks)}
-                                              className="p-1 hover:bg-gray-100 rounded"
-                                            >
-                                              <Pencil size={14} />
-                                            </button>
-                                            <button
-                                              onClick={() => handleAksesuarDelete(envanter.id, aks.id)}
-                                              className="p-1 hover:bg-red-100 rounded text-red-600"
-                                            >
-                                              <Trash2 size={14} />
-                                            </button>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              ) : (
-                                <p className="text-gray-400 text-sm text-center py-2">Aksesuar bulunmuyor</p>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
-              {filteredEnvanterler.length === 0 && (
-                <div className="text-center py-8 text-gray-500">Envanter bulunamadı</div>
-              )}
-            </div>
-          )}
-        </CardContent>
+          </CardContent>
       </Card>
+
+      {/* VIEW CONTENT */}
+      {viewMode === 'list' ? (
+         // --- LIST VIEW (Existing Table) ---
+         <Card>
+            <CardContent className="p-0">
+               {loading ? (
+                 <div className="text-center py-8">Yükleniyor...</div>
+               ) : (
+                 <div className="overflow-x-auto">
+                   <div className="mb-2 flex items-center gap-2 p-4 pb-0">
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={handleBatchPrintQr}
+                       disabled={selectedEnvanterIds.size === 0}
+                     >
+                       <Printer className="mr-2" size={16} />
+                       Seçilenleri Qr Kod Yazdır ({selectedEnvanterIds.size})
+                     </Button>
+                   </div>
+                   <table className="w-full">
+                     <thead>
+                       <tr className="border-b bg-gray-50/50">
+                         <th className="py-3 px-4 w-10">
+                           <Checkbox
+                             checked={filteredEnvanterler.length > 0 && selectedEnvanterIds.size === filteredEnvanterler.length}
+                             onCheckedChange={toggleSelectAll}
+                           />
+                         </th>
+                         <th className="w-8"></th>
+                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Envanter Tipi</th>
+                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Marka</th>
+                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Model</th>
+                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Seri No</th>
+                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Durum</th>
+                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Zimmetli...</th>
+                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Tarih</th>
+                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">İşlemler</th>
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {filteredEnvanterler.map((envanter) => (
+                         <Fragment key={envanter.id}>
+                           <tr className="border-b hover:bg-gray-50 group">
+                             <td className="py-3 px-4">
+                               <Checkbox
+                                 checked={selectedEnvanterIds.has(envanter.id)}
+                                 onCheckedChange={() => toggleSelect(envanter.id)}
+                               />
+                             </td>
+                             <td className="py-3 px-2 text-center">
+                               <div onClick={() => toggleRow(envanter.id)} className="p-1 rounded hover:bg-gray-200 cursor-pointer inline-flex">
+                                 {expandedRows[envanter.id] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                               </div>
+                             </td>
+                             <td className="py-3 px-4 text-sm font-medium">{envanter.envanterTipiAd}</td>
+                             <td className="py-3 px-4 text-sm">{envanter.marka}</td>
+                             <td className="py-3 px-4 text-sm">{envanter.model}</td>
+                             <td className="py-3 px-4 text-sm font-mono">{envanter.seriNumarasi}</td>
+                             <td className="py-3 px-4">
+                               <span className={cn(
+                                 "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                                 envanter.durum === 'Zimmetli' && "bg-green-50 text-green-700 border-green-200",
+                                 envanter.durum === 'Depoda' && "bg-blue-50 text-blue-700 border-blue-200",
+                                 envanter.durum === 'Serviste' && "bg-yellow-50 text-yellow-700 border-yellow-200",
+                                 envanter.durum === 'Arızalı' && "bg-red-50 text-red-700 border-red-200",
+                                 envanter.durum === 'Kayıp' && "bg-gray-100 text-gray-700 border-gray-200"
+                               )}>
+                                 {envanter.durum}
+                               </span>
+                             </td>
+                             <td className="py-3 px-4 text-sm">
+                               {envanter.zimmetBilgisi?.calisanAd ? (
+                                   <div className="flex items-center gap-1">
+                                       <UserPlus size={12} className="text-gray-400"/>
+                                       {envanter.zimmetBilgisi.calisanAd.split(' ')[0]}..
+                                   </div>
+                               ) : '-'}
+                             </td>
+                             <td className="py-3 px-4 text-sm text-gray-500">
+                               {envanter.zimmetBilgisi?.zimmetTarihi
+                                 ? new Date(envanter.zimmetBilgisi.zimmetTarihi).toLocaleDateString('tr-TR')
+                                 : '-'
+                               }
+                             </td>
+                             <td className="py-3 px-4 text-right">
+                               <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <Button variant="ghost" size="sm" onClick={() => openAksesuarDialog(envanter)} title="Aksesuar">
+                                   <Package size={14} className="text-orange-600" />
+                                 </Button>
+                                 <Button variant="ghost" size="sm" onClick={() => openGecmisDialog(envanter)} title="Geçmiş">
+                                   <History size={14} className="text-purple-600" />
+                                 </Button>
+                                 <Button variant="ghost" size="sm" onClick={() => openEditDialog(envanter)} title="Düzenle">
+                                   <Pencil size={14} className="text-gray-600" />
+                                 </Button>
+                                 <Button variant="ghost" size="sm" onClick={() => handleQrCode(envanter)} title="QR">
+                                   <QrCode size={14} className="text-blue-600" />
+                                 </Button>
+                                 <Button variant="ghost" size="sm" onClick={() => handleDelete(envanter.id)} title="Sil">
+                                   <Trash2 size={14} className="text-red-600" />
+                                 </Button>
+                               </div>
+                             </td>
+                           </tr>
+                           {expandedRows[envanter.id] && (
+                             <tr className="bg-gray-50/50">
+                               <td colSpan={10} className="p-4 pl-12">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-xs font-semibold uppercase text-gray-500 tracking-wider">Aksesuarlar / Bileşenler</h4>
+                                    <Button size="sm" variant="outline" onClick={() => openAksesuarDialog(envanter)} className="h-7 text-xs">
+                                      <Plus size={12} className="mr-1" /> Ekle
+                                    </Button>
+                                  </div>
+                                  {aksesuarlar[envanter.id]?.length > 0 ? (
+                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {aksesuarlar[envanter.id].map(acc => (
+                                           <div key={acc.id} className="bg-white p-3 rounded border text-sm relative group hover:border-gray-300 transition-colors">
+                                              <div className="font-medium text-gray-900">{acc.ad}</div>
+                                              <div className="text-gray-500 text-xs">{acc.marka} {acc.model}</div>
+                                              <div className="text-[10px] text-gray-400 mt-1 font-mono">S/N: {acc.seriNumarasi}</div>
+                                              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white pl-2">
+                                                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openAksesuarDialog(envanter, acc)}>
+                                                    <Pencil size={12} />
+                                                 </Button>
+                                                 <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => handleAksesuarDelete(envanter.id, acc.id)}>
+                                                    <Trash2 size={12} />
+                                                 </Button>
+                                              </div>
+                                           </div>
+                                        ))}
+                                     </div>
+                                  ) : (
+                                     <div className="text-sm text-gray-400 italic py-2">Tanımlı aksesuar yok.</div>
+                                  )}
+                               </td>
+                             </tr>
+                           )}
+                         </Fragment>
+                       ))}
+                     </tbody>
+                   </table>
+                   {filteredEnvanterler.length === 0 && (
+                     <div className="text-center py-12 text-gray-500">
+                        <div className="mb-2">📦</div> 
+                        Kayıt bulunamadı
+                     </div>
+                   )}
+                 </div>
+               )}
+            </CardContent>
+         </Card>
+      ) : (
+         // --- BOARD VIEW (Kanban) ---
+         <div className="overflow-x-auto pb-4">
+             <div className="flex gap-4 min-w-max">
+                 {getColumns().map((col, index) => {
+                    const title = getGroupTitle(col)
+                    const value = getGroupValue(col)
+                    const items = filteredEnvanterler.filter(item => {
+                       if (groupBy === 'durum') return item.durum === value
+                       return item.envanterTipiId === value
+                    })
+
+                    return (
+                       <div 
+                         key={index} 
+                         className="w-80 flex-shrink-0 rounded-xl bg-gray-100/50 border flex flex-col max-h-[calc(100vh-220px)]"
+                         onDragOver={handleDragOver}
+                         onDrop={(e) => handleDrop(e, value)}
+                       >
+                          {/* Column Header */}
+                          <div className={cn("p-3 rounded-t-xl border-b bg-white flex items-center justify-between sticky top-0 z-10", getGroupColor(value))}>
+                              <div className="font-semibold text-gray-700 flex items-center gap-2">
+                                 {title}
+                                 <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
+                                   {items.length}
+                                 </span>
+                              </div>
+                              {groupBy === 'durum' && value === 'Depoda' && (
+                                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { resetForm(); setShowDialog(true) }}>
+                                    <Plus size={14} />
+                                 </Button>
+                              )}
+                          </div>
+
+                          {/* Column Body */}
+                          <div className="p-2 space-y-2 flex-1 overflow-y-auto">
+                              {items.map(item => (
+                                 <div
+                                   key={item.id}
+                                   draggable
+                                   onDragStart={(e) => handleDragStart(e, item)}
+                                   className="bg-white p-3 rounded-lg border shadow-sm cursor-grab hover:shadow-md transition-all group relative"
+                                 >
+                                    <div className="flex justify-between items-start">
+                                       <div>
+                                          <div className="text-[10px] uppercase font-bold text-gray-400 mb-0.5">{item.envanterTipiAd}</div>
+                                          <div className="font-semibold text-gray-800 text-sm">{item.marka} {item.model}</div>
+                                       </div>
+                                       <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); openEditDialog(item); }}>
+                                          <Pencil size={12} className="text-gray-400" />
+                                       </Button>
+                                    </div>
+                                    
+                                    <div className="mt-2 flex items-center gap-2 text-[10px] font-mono text-gray-500 bg-gray-50 p-1 rounded w-fit">
+                                       <QrCode size={10} />
+                                       {item.seriNumarasi}
+                                    </div>
+                                    
+                                    {/* Footer Info */}
+                                    <div className="mt-3 pt-2 border-t flex items-center justify-between text-xs text-gray-500">
+                                       {groupBy === 'durum' ? (
+                                           // Show Type if grouped by Status
+                                           <span>{item.envanterTipiAd}</span>
+                                       ) : (
+                                           // Show Status if grouped by Type
+                                           <span className={cn(
+                                             "px-1.5 py-0.5 rounded text-[10px] font-medium border",
+                                             item.durum === 'Depoda' ? "bg-blue-50 text-blue-600 border-blue-100" :
+                                             item.durum === 'Zimmetli' ? "bg-green-50 text-green-600 border-green-100" :
+                                             "bg-gray-50 text-gray-600 border-gray-100"
+                                           )}>
+                                              {item.durum}
+                                           </span>
+                                       )}
+                                       {item.zimmetBilgisi?.calisanAd && groupBy !== 'durum' && (
+                                          <span className="flex items-center gap-1 text-green-700 bg-green-50 px-1 rounded">
+                                             <UserPlus size={10} /> {item.zimmetBilgisi.calisanAd.split(' ')[0]}
+                                          </span>
+                                       )}
+                                    </div>
+                                 </div>
+                              ))}
+                              {items.length === 0 && (
+                                 <div className="h-24 flex items-center justify-center text-gray-400 text-sm border-2 border-dashed rounded-lg bg-gray-50/50">
+                                    <span className="opacity-50">Boş</span>
+                                 </div>
+                              )}
+                          </div>
+                       </div>
+                    )
+                 })}
+             </div>
+         </div>
+      )}
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-2xl">
