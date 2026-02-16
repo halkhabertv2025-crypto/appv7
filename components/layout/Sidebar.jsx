@@ -9,7 +9,8 @@ import {
   ChevronDown,
   ChevronRight,
   User,
-  Wrench
+  Wrench,
+  CheckCircle
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -46,6 +47,12 @@ const Sidebar = ({ currentPage, setCurrentPage, isOpen, setIsOpen, user }) => {
       label: 'Departmanlar',
       icon: Building2,
       requiresPermission: false
+    },
+    {
+      id: 'to-do-list',
+      label: 'To-Do List',
+      icon: CheckCircle,
+      requiresPermission: true
     },
     {
       id: 'envanter-zimmet',

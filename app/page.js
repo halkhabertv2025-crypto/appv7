@@ -15,6 +15,7 @@ import BakimOnarim from '@/components/pages/BakimOnarim'
 import Ayarlar from '@/components/pages/Ayarlar'
 import BeninSayfam from '@/components/pages/BeninSayfam'
 import Login from '@/components/pages/Login'
+import TodoList from '@/components/pages/TodoList'
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard')
@@ -77,6 +78,7 @@ export default function App() {
           {currentPage === 'benim-sayfam' && <BeninSayfam user={user} setUser={setUser} />}
           {currentPage === 'calisanlar' && <Calisanlar user={user} />}
           {currentPage === 'departmanlar' && <Departmanlar user={user} />}
+          {currentPage === 'to-do-list' && <TodoList user={user} />}
           {currentPage === 'envanterler' && <Envanterler user={user} />}
           {currentPage === 'envanter-tipleri' && <EnvanterTipleri />}
           {currentPage === 'zimmetler' && <Zimmetler user={user} />}

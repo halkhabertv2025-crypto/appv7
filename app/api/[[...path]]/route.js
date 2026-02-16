@@ -544,6 +544,63 @@ async function handleRoute(request, context) {
       return handleCORS(NextResponse.json({ success: true }));
     }
 
+    // ============= TODOS =============
+    if (route === "/todos" && method === "GET") {
+      const todos = await db
+        .collection("todos")
+        .find({ deletedAt: null })
+        .sort({ createdAt: -1 })
+        .toArray();
+      return handleCORS(NextResponse.json(todos));
+    }
+
+    if (route === "/todos" && method === "POST") {
+      const body = await request.json();
+      const todo = {
+        id: uuidv4(),
+        title: body.title,
+        priority: body.priority || "Normal",
+        status: "pending",
+        userId: body.userId,
+        createdBy: body.userName,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
+      await db.collection("todos").insertOne(todo);
+      const { _id, ...result } = todo;
+      return handleCORS(NextResponse.json(result));
+    }
+
+    if (route.startsWith("/todos/") && method === "PUT") {
+      const id = route.split("/")[2];
+      const body = await request.json();
+      
+      const updateData = { updatedAt: new Date() };
+      if (body.status) updateData.status = body.status;
+      if (body.title) updateData.title = body.title;
+      if (body.priority) updateData.priority = body.priority;
+
+      await db
+        .collection("todos")
+        .updateOne(
+          { id, deletedAt: null },
+          { $set: updateData }
+        );
+      return handleCORS(NextResponse.json({ success: true }));
+    }
+
+    if (route.startsWith("/todos/") && method === "DELETE") {
+      const id = route.split("/")[2];
+      await db
+        .collection("todos")
+        .updateOne(
+          { id, deletedAt: null },
+          { $set: { deletedAt: new Date() } }
+        );
+      return handleCORS(NextResponse.json({ success: true }));
+    }
+
     // ============= ÇALIŞANLAR =============
     if (route === "/calisanlar" && method === "GET") {
       const calisanlar = await db
