@@ -285,17 +285,34 @@ const Envanterler = ({ user }) => {
       return
     }
 
+    const isEditing = !!editingEnvanter
+    const url = isEditing
+      ? `/api/envanterler/${editingEnvanter.id}`
+      : '/api/envanterler'
+
+    // Audit log için eski ve yeni durumu kaydet
+    const oldDurum = editingEnvanter?.durum
+    const newDurum = formData.durum
+    const editingId = editingEnvanter?.id
+
+    // Optimistic UI: diyaloğu hemen kapat ve formu sıfırla
+    setShowDialog(false)
+    setFormData({
+      envanterTipiId: '',
+      marka: '',
+      model: '',
+      seriNumarasi: '',
+      durum: 'Depoda',
+      notlar: '',
+      alisFiyati: '',
+      paraBirimi: 'TRY',
+      alisTarihi: ''
+    })
+    setEditingEnvanter(null)
+
     try {
-      const url = editingEnvanter
-        ? `/api/envanterler/${editingEnvanter.id}`
-        : '/api/envanterler'
-
-      // Audit log için eski ve yeni durumu kaydet
-      const oldDurum = editingEnvanter?.durum
-      const newDurum = formData.durum
-
       const response = await fetch(url, {
-        method: editingEnvanter ? 'PUT' : 'POST',
+        method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -303,7 +320,7 @@ const Envanterler = ({ user }) => {
           userId: user?.id,
           userName: user?.adSoyad,
           oldDurum: oldDurum,
-          logStatusChange: editingEnvanter && oldDurum !== newDurum
+          logStatusChange: isEditing && oldDurum !== newDurum
         })
       })
 
@@ -311,22 +328,23 @@ const Envanterler = ({ user }) => {
 
       if (!response.ok) {
         toast({ title: 'Hata', description: data.error, variant: 'destructive' })
+        fetchEnvanterler()
         return
       }
 
       toast({
         title: 'Başarılı',
-        description: editingEnvanter ? 'Envanter güncellendi' : 'Envanter oluşturuldu'
+        description: isEditing ? 'Envanter güncellendi' : 'Envanter oluşturuldu'
       })
 
       // If status changed to Servis, auto-create a Bakım/Onarım record
-      if (editingEnvanter && newDurum === 'Servis' && oldDurum !== 'Servis') {
+      if (isEditing && newDurum === 'Servis' && oldDurum !== 'Servis') {
         try {
           await fetch('/api/bakim-kayitlari', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              envanterId: editingEnvanter.id,
+              envanterId: editingId,
               arizaTuru: 'Bakım',
               aciklama: 'Servis için gönderildi',
               bildirilenTarih: new Date().toISOString(),
@@ -344,22 +362,10 @@ const Envanterler = ({ user }) => {
         }
       }
 
-      setShowDialog(false)
-      setFormData({
-        envanterTipiId: '',
-        marka: '',
-        model: '',
-        seriNumarasi: '',
-        durum: 'Depoda',
-        notlar: '',
-        alisFiyati: '',
-        paraBirimi: 'TRY',
-        alisTarihi: ''
-      })
-      setEditingEnvanter(null)
       fetchEnvanterler()
     } catch (error) {
       toast({ title: 'Hata', description: 'İşlem başarısız', variant: 'destructive' })
+      fetchEnvanterler()
     }
   }
 
