@@ -575,7 +575,7 @@ async function handleRoute(request, context) {
     if (route.startsWith("/todos/") && method === "PUT") {
       const id = route.split("/")[2];
       const body = await request.json();
-      
+
       const updateData = { updatedAt: new Date() };
       if (body.status) updateData.status = body.status;
       if (body.title) updateData.title = body.title;
@@ -583,10 +583,7 @@ async function handleRoute(request, context) {
 
       await db
         .collection("todos")
-        .updateOne(
-          { id, deletedAt: null },
-          { $set: updateData }
-        );
+        .updateOne({ id, deletedAt: null }, { $set: updateData });
       return handleCORS(NextResponse.json({ success: true }));
     }
 
@@ -596,7 +593,7 @@ async function handleRoute(request, context) {
         .collection("todos")
         .updateOne(
           { id, deletedAt: null },
-          { $set: { deletedAt: new Date() } }
+          { $set: { deletedAt: new Date() } },
         );
       return handleCORS(NextResponse.json({ success: true }));
     }
@@ -658,10 +655,15 @@ async function handleRoute(request, context) {
           deletedAt: null,
         });
 
-        if (!requestingUser || (!requestingUser.adminYetkisi && !requestingUser.yoneticiYetkisi)) {
+        if (
+          !requestingUser ||
+          (!requestingUser.adminYetkisi && !requestingUser.yoneticiYetkisi)
+        ) {
           return handleCORS(
             NextResponse.json(
-              { error: "Sadece yönetici ve admin kullanıcılar yetki atayabilir" },
+              {
+                error: "Sadece yönetici ve admin kullanıcılar yetki atayabilir",
+              },
               { status: 403 },
             ),
           );
@@ -770,10 +772,16 @@ async function handleRoute(request, context) {
             deletedAt: null,
           });
 
-          if (!requestingUser || (!requestingUser.adminYetkisi && !requestingUser.yoneticiYetkisi)) {
+          if (
+            !requestingUser ||
+            (!requestingUser.adminYetkisi && !requestingUser.yoneticiYetkisi)
+          ) {
             return handleCORS(
               NextResponse.json(
-                { error: "Sadece yönetici ve admin kullanıcılar yetki değiştirebilir" },
+                {
+                  error:
+                    "Sadece yönetici ve admin kullanıcılar yetki değiştirebilir",
+                },
                 { status: 403 },
               ),
             );
@@ -995,6 +1003,16 @@ async function handleRoute(request, context) {
                 .findOne({ id: envanter.envanterTipiId })
             : null;
 
+          // Fetch accessories for this inventory item
+          let aksesuarlar = [];
+          if (envanter) {
+            aksesuarlar = await db
+              .collection("inventory_accessories")
+              .find({ inventoryId: envanter.id, deletedAt: null })
+              .toArray();
+            aksesuarlar = aksesuarlar.map(({ _id, ...rest }) => rest);
+          }
+
           return {
             ...zimmet,
             envanterBilgisi: envanter
@@ -1003,6 +1021,7 @@ async function handleRoute(request, context) {
                   marka: envanter.marka,
                   model: envanter.model,
                   seriNumarasi: envanter.seriNumarasi,
+                  aksesuarlar,
                 }
               : null,
           };
@@ -1131,18 +1150,16 @@ async function handleRoute(request, context) {
       // Security fix: Hash password before storing
       const hashedPassword = await bcrypt.hash(body.yeniSifre, 10);
 
-      const result = await db
-        .collection("calisanlar")
-        .updateOne(
-          { id, deletedAt: null },
-          {
-            $set: {
-              sifre: hashedPassword,
-              sifreDegistirildi: true,
-              updatedAt: new Date(),
-            },
+      const result = await db.collection("calisanlar").updateOne(
+        { id, deletedAt: null },
+        {
+          $set: {
+            sifre: hashedPassword,
+            sifreDegistirildi: true,
+            updatedAt: new Date(),
           },
-        );
+        },
+      );
 
       if (result.matchedCount === 0) {
         return handleCORS(
@@ -1192,18 +1209,16 @@ async function handleRoute(request, context) {
         );
       }
 
-      const result = await db
-        .collection("calisanlar")
-        .updateOne(
-          { id, deletedAt: null },
-          {
-            $set: {
-              deletedAt: new Date(),
-              deletedBy: body.userName || "Bilinmiyor",
-              deletedByRole: body.userRole || "",
-            },
+      const result = await db.collection("calisanlar").updateOne(
+        { id, deletedAt: null },
+        {
+          $set: {
+            deletedAt: new Date(),
+            deletedBy: body.userName || "Bilinmiyor",
+            deletedByRole: body.userRole || "",
           },
-        );
+        },
+      );
 
       if (result.matchedCount === 0) {
         return handleCORS(
@@ -1601,7 +1616,11 @@ async function handleRoute(request, context) {
       );
     }
 
-    if (route.startsWith("/envanterler/") && method === "PUT" && !route.includes("/accessories")) {
+    if (
+      route.startsWith("/envanterler/") &&
+      method === "PUT" &&
+      !route.includes("/accessories")
+    ) {
       const id = route.split("/")[2];
       const body = await request.json();
 
@@ -1746,18 +1765,16 @@ async function handleRoute(request, context) {
         );
       }
 
-      const result = await db
-        .collection("envanterler")
-        .updateOne(
-          { id, deletedAt: null },
-          {
-            $set: {
-              deletedAt: new Date(),
-              deletedBy: body.userName || "Bilinmiyor",
-              deletedByRole: body.userRole || "",
-            },
+      const result = await db.collection("envanterler").updateOne(
+        { id, deletedAt: null },
+        {
+          $set: {
+            deletedAt: new Date(),
+            deletedBy: body.userName || "Bilinmiyor",
+            deletedByRole: body.userRole || "",
           },
-        );
+        },
+      );
 
       if (result.matchedCount === 0) {
         return handleCORS(
@@ -3109,8 +3126,6 @@ async function handleRoute(request, context) {
       return handleCORS(NextResponse.json({ success: true }));
     }
 
-
-
     // ============= AMORTISMAN (Depreciation) =============
     if (route === "/amortisman-raporu" && method === "GET") {
       const envanterler = await db
@@ -3674,14 +3689,26 @@ async function handleRoute(request, context) {
     // ============= BACKUP SYSTEM =============
     if (route === "/backup/stats" && method === "GET") {
       // Check admin authorization
-      const authHeader = request.headers.get('x-user-id')
+      const authHeader = request.headers.get("x-user-id");
       if (!authHeader) {
-        return handleCORS(NextResponse.json({ error: "Yetkilendirme gerekli" }, { status: 401 }))
+        return handleCORS(
+          NextResponse.json(
+            { error: "Yetkilendirme gerekli" },
+            { status: 401 },
+          ),
+        );
       }
 
-      const requestingUser = await db.collection('calisanlar').findOne({ id: authHeader, deletedAt: null })
+      const requestingUser = await db
+        .collection("calisanlar")
+        .findOne({ id: authHeader, deletedAt: null });
       if (!requestingUser || !requestingUser.yoneticiYetkisi) {
-        return handleCORS(NextResponse.json({ error: "Bu işlem için 'Yönetici' yetkisi gereklidir" }, { status: 403 }))
+        return handleCORS(
+          NextResponse.json(
+            { error: "Bu işlem için 'Yönetici' yetkisi gereklidir" },
+            { status: 403 },
+          ),
+        );
       }
 
       const [
@@ -3722,14 +3749,26 @@ async function handleRoute(request, context) {
 
     if (route === "/backup/export" && method === "GET") {
       // Check admin authorization
-      const authHeader = request.headers.get('x-user-id')
+      const authHeader = request.headers.get("x-user-id");
       if (!authHeader) {
-        return handleCORS(NextResponse.json({ error: "Yetkilendirme gerekli" }, { status: 401 }))
+        return handleCORS(
+          NextResponse.json(
+            { error: "Yetkilendirme gerekli" },
+            { status: 401 },
+          ),
+        );
       }
 
-      const requestingUser = await db.collection('calisanlar').findOne({ id: authHeader, deletedAt: null })
+      const requestingUser = await db
+        .collection("calisanlar")
+        .findOne({ id: authHeader, deletedAt: null });
       if (!requestingUser || !requestingUser.yoneticiYetkisi) {
-        return handleCORS(NextResponse.json({ error: "Sadece 'Yönetici' yetkisi olanlar yedek alabilir" }, { status: 403 }))
+        return handleCORS(
+          NextResponse.json(
+            { error: "Sadece 'Yönetici' yetkisi olanlar yedek alabilir" },
+            { status: 403 },
+          ),
+        );
       }
       const [
         envanterler,
@@ -3821,14 +3860,26 @@ async function handleRoute(request, context) {
 
     if (route === "/backup/import" && method === "POST") {
       // Check admin authorization
-      const authHeader = request.headers.get('x-user-id')
+      const authHeader = request.headers.get("x-user-id");
       if (!authHeader) {
-        return handleCORS(NextResponse.json({ error: "Yetkilendirme gerekli" }, { status: 401 }))
+        return handleCORS(
+          NextResponse.json(
+            { error: "Yetkilendirme gerekli" },
+            { status: 401 },
+          ),
+        );
       }
 
-      const requestingUser = await db.collection('calisanlar').findOne({ id: authHeader, deletedAt: null })
+      const requestingUser = await db
+        .collection("calisanlar")
+        .findOne({ id: authHeader, deletedAt: null });
       if (!requestingUser || !requestingUser.yoneticiYetkisi) {
-        return handleCORS(NextResponse.json({ error: "Sadece 'Yönetici' yetkisi olanlar yedek yükleyebilir" }, { status: 403 }))
+        return handleCORS(
+          NextResponse.json(
+            { error: "Sadece 'Yönetici' yetkisi olanlar yedek yükleyebilir" },
+            { status: 403 },
+          ),
+        );
       }
 
       const body = await request.json();
@@ -3899,10 +3950,7 @@ async function handleRoute(request, context) {
   } catch (error) {
     console.error("API Error:", error);
     return handleCORS(
-      NextResponse.json(
-        { error: "Internal server error" },
-        { status: 500 },
-      ),
+      NextResponse.json({ error: "Internal server error" }, { status: 500 }),
     );
   }
 }

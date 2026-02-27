@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { X, User, Plus, Upload, Download, FileText, Trash2, Camera, Image } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -235,6 +235,20 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
       '1',
       zimmet.envanterBilgisi?.seriNumarasi || '-'
     ]]
+
+    // Add accessories as additional rows
+    if (zimmet.envanterBilgisi?.aksesuarlar?.length > 0) {
+      zimmet.envanterBilgisi.aksesuarlar.forEach((aks, i) => {
+        tableData.push([
+          `1.${i + 1}`,
+          `  ↳ Aksesuar`,
+          aks.marka || '-',
+          `${aks.ad || ''} ${aks.model || ''}`.trim() || '-',
+          '1',
+          aks.seriNumarasi || '-'
+        ])
+      })
+    }
     
     const finalTableY = createZimmetTable(doc, tableData, yPos)
 
@@ -328,14 +342,32 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
     doc.text('ALINAN MALZEMENİN', 20, yPos)
     yPos += 5
 
-    const tableData = aktifZimmetler.map((zimmet, index) => [
-      (index + 1).toString(),
-      zimmet.envanterBilgisi?.tip || '-',
-      zimmet.envanterBilgisi?.marka || '-',
-      zimmet.envanterBilgisi?.model || '-',
-      '1',
-      zimmet.envanterBilgisi?.seriNumarasi || '-'
-    ])
+    const tableData = []
+    aktifZimmetler.forEach((zimmet, index) => {
+      const rowNum = index + 1
+      tableData.push([
+        rowNum.toString(),
+        zimmet.envanterBilgisi?.tip || '-',
+        zimmet.envanterBilgisi?.marka || '-',
+        zimmet.envanterBilgisi?.model || '-',
+        '1',
+        zimmet.envanterBilgisi?.seriNumarasi || '-'
+      ])
+
+      // Add accessories as sub-rows
+      if (zimmet.envanterBilgisi?.aksesuarlar?.length > 0) {
+        zimmet.envanterBilgisi.aksesuarlar.forEach((aks, i) => {
+          tableData.push([
+            `${rowNum}.${i + 1}`,
+            `  ↳ Aksesuar`,
+            aks.marka || '-',
+            `${aks.ad || ''} ${aks.model || ''}`.trim() || '-',
+            '1',
+            aks.seriNumarasi || '-'
+          ])
+        })
+      }
+    })
 
     const finalTableY = createZimmetTable(doc, tableData, yPos)
 
@@ -579,59 +611,89 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
                   </thead>
                   <tbody>
                     {zimmetler.map((zimmet) => (
-                      <tr key={zimmet.id} className="border-t hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <div>
-                            <div className="font-medium text-sm">
-                              {zimmet.envanterBilgisi?.tip} {zimmet.envanterBilgisi?.marka}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {zimmet.envanterBilgisi?.model}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-sm font-mono">
-                          {zimmet.envanterBilgisi?.seriNumarasi}
-                        </td>
-                        <td className="py-3 px-4 text-sm">
-                          <div>
-                            <div>{new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')}</div>
-                            {zimmet.iadeTarihi && (
-                              <div className="text-xs text-gray-500">
-                                İade: {new Date(zimmet.iadeTarihi).toLocaleDateString('tr-TR')}
+                      <Fragment key={zimmet.id}>
+                        <tr className="border-t hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <div>
+                              <div className="font-medium text-sm">
+                                {zimmet.envanterBilgisi?.tip} {zimmet.envanterBilgisi?.marka}
                               </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={cn(
-                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                            zimmet.durum === 'Aktif' && "bg-green-100 text-green-800",
-                            zimmet.durum === 'İade Edildi' && "bg-gray-100 text-gray-800"
-                          )}>
-                            {zimmet.durum}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => generateZimmetPDF(zimmet)}
-                            title="PDF İndir"
-                          >
-                            <FileText size={16} />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="ml-2"
-                            onClick={() => handleQrCode(zimmet)}
-                            title="QR Kod Oluştur"
-                          >
-                            <QrCode size={16} />
-                          </Button>
-                        </td>
-                      </tr>
+                              <div className="text-xs text-gray-500">
+                                {zimmet.envanterBilgisi?.model}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm font-mono">
+                            {zimmet.envanterBilgisi?.seriNumarasi}
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            <div>
+                              <div>{new Date(zimmet.zimmetTarihi).toLocaleDateString('tr-TR')}</div>
+                              {zimmet.iadeTarihi && (
+                                <div className="text-xs text-gray-500">
+                                  İade: {new Date(zimmet.iadeTarihi).toLocaleDateString('tr-TR')}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={cn(
+                              "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                              zimmet.durum === 'Aktif' && "bg-green-100 text-green-800",
+                              zimmet.durum === 'İade Edildi' && "bg-gray-100 text-gray-800"
+                            )}>
+                              {zimmet.durum}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => generateZimmetPDF(zimmet)}
+                              title="PDF İndir"
+                            >
+                              <FileText size={16} />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="ml-2"
+                              onClick={() => handleQrCode(zimmet)}
+                              title="QR Kod Oluştur"
+                            >
+                              <QrCode size={16} />
+                            </Button>
+                          </td>
+                        </tr>
+                        {/* Aksesuar satırları */}
+                        {zimmet.envanterBilgisi?.aksesuarlar?.length > 0 && zimmet.envanterBilgisi.aksesuarlar.map((aks) => (
+                          <tr key={aks.id} className="bg-blue-50/50 hover:bg-blue-50">
+                            <td className="py-2 px-4 pl-8">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-blue-400">↳</span>
+                                <div>
+                                  <div className="text-xs font-medium text-blue-700">
+                                    Aksesuar: {aks.ad}
+                                  </div>
+                                  <div className="text-xs text-blue-500">
+                                    {aks.marka} {aks.model}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-2 px-4 text-xs font-mono text-blue-600">
+                              {aks.seriNumarasi || '-'}
+                            </td>
+                            <td className="py-2 px-4 text-xs text-blue-500">-</td>
+                            <td className="py-2 px-4">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
+                                Aksesuar
+                              </span>
+                            </td>
+                            <td className="py-2 px-4"></td>
+                          </tr>
+                        ))}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
