@@ -68,6 +68,39 @@ function handleCORS(response) {
   return response;
 }
 
+// Security: Helper for Token/Session Validation
+async function authenticateRequest(request) {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader) {
+    return { error: "Yetkilendirme gerekli (Token eksik)", status: 401 };
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  
+  const db = await connectToMongo();
+  let user = await db.collection("calisanlar").findOne({
+    email: token,
+    deletedAt: null,
+  });
+
+  if (!user) {
+    user = await db.collection("users").findOne({
+      email: token,
+      deletedAt: null,
+    });
+  }
+
+  if (!user) {
+    return { error: "Geçersiz token veya kullanıcı bulunamadı", status: 401 };
+  }
+  
+  if (user.durum !== "Aktif" && user.durum !== "active") {
+    return { error: "Kullanıcı hesabı aktif değil", status: 403 };
+  }
+
+  return { user };
+}
+
 // OPTIONS handler for CORS
 export async function OPTIONS() {
   return handleCORS(new NextResponse(null, { status: 200 }));
@@ -1338,6 +1371,9 @@ async function handleRoute(request, context) {
     }
 
     if (route.startsWith("/envanter-tipleri/") && method === "DELETE") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const id = route.split("/")[2];
 
       const result = await db
@@ -1405,6 +1441,9 @@ async function handleRoute(request, context) {
     }
 
     if (route === "/envanterler" && method === "POST") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const body = await request.json();
 
       if (
@@ -1621,6 +1660,9 @@ async function handleRoute(request, context) {
       method === "PUT" &&
       !route.includes("/accessories")
     ) {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const id = route.split("/")[2];
       const body = await request.json();
 
@@ -1741,6 +1783,9 @@ async function handleRoute(request, context) {
     }
 
     if (route.startsWith("/envanterler/") && method === "DELETE") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const id = route.split("/")[2];
       const body = await request.json().catch(() => ({}));
 
@@ -1963,6 +2008,9 @@ async function handleRoute(request, context) {
     }
 
     if (route === "/zimmetler" && method === "POST") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const body = await request.json();
 
       if (!body.envanterId || !body.calisanId || !body.zimmetTarihi) {
@@ -2065,6 +2113,9 @@ async function handleRoute(request, context) {
 
     // İade endpoint
     if (route === "/zimmetler/iade" && method === "POST") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const body = await request.json();
 
       if (
@@ -2182,6 +2233,9 @@ async function handleRoute(request, context) {
     }
 
     if (route.startsWith("/zimmetler/") && method === "DELETE") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const id = route.split("/")[2];
 
       const result = await db
@@ -2578,6 +2632,9 @@ async function handleRoute(request, context) {
       route.endsWith("/accessories") &&
       method === "POST"
     ) {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const inventoryId = route.split("/")[2];
       const body = await request.json();
 
@@ -2629,6 +2686,9 @@ async function handleRoute(request, context) {
       route.match(/\/envanterler\/[^/]+\/accessories\/[^/]+$/) &&
       method === "PUT"
     ) {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const parts = route.split("/");
       const accessoryId = parts[4];
       const body = await request.json();
@@ -2655,6 +2715,9 @@ async function handleRoute(request, context) {
       route.match(/\/envanterler\/[^/]+\/accessories\/[^/]+$/) &&
       method === "DELETE"
     ) {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const parts = route.split("/");
       const accessoryId = parts[4];
 
@@ -2688,6 +2751,9 @@ async function handleRoute(request, context) {
     }
 
     if (route === "/dijital-varlik-kategorileri" && method === "POST") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const body = await request.json();
 
       if (!body.ad) {
@@ -2725,6 +2791,9 @@ async function handleRoute(request, context) {
     }
 
     if (route.startsWith("/dijital-varlik-kategorileri/") && method === "PUT") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const id = route.split("/")[2];
       const body = await request.json();
 
@@ -2751,6 +2820,9 @@ async function handleRoute(request, context) {
       route.startsWith("/dijital-varlik-kategorileri/") &&
       method === "DELETE"
     ) {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const id = route.split("/")[2];
       const body = await request.json().catch(() => ({}));
 
@@ -2850,6 +2922,9 @@ async function handleRoute(request, context) {
     }
 
     if (route.startsWith("/restore/envanter/") && method === "POST") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const id = route.split("/")[3];
       const body = await request.json().catch(() => ({}));
 
@@ -2879,6 +2954,9 @@ async function handleRoute(request, context) {
     }
 
     if (route.startsWith("/restore/calisan/") && method === "POST") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const id = route.split("/")[3];
       const body = await request.json().catch(() => ({}));
 
@@ -2954,6 +3032,9 @@ async function handleRoute(request, context) {
     }
 
     if (route === "/dijital-varliklar" && method === "POST") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const body = await request.json();
 
       if (!body.ad || !body.kategoriId) {
@@ -3004,6 +3085,9 @@ async function handleRoute(request, context) {
     }
 
     if (route.startsWith("/dijital-varliklar/") && method === "PUT") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const id = route.split("/")[2];
       const body = await request.json();
 
@@ -3118,6 +3202,9 @@ async function handleRoute(request, context) {
     }
 
     if (route.startsWith("/dijital-varliklar/") && method === "DELETE") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const id = route.split("/")[2];
       const body = await request.json().catch(() => ({}));
 
@@ -3278,6 +3365,9 @@ async function handleRoute(request, context) {
     }
 
     if (route === "/bakim-kayitlari" && method === "POST") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const body = await request.json();
 
       if (!body.envanterId || !body.arizaTuru) {
@@ -3340,6 +3430,9 @@ async function handleRoute(request, context) {
     }
 
     if (route.startsWith("/bakim-kayitlari/") && method === "PUT") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const id = route.split("/")[2];
       const body = await request.json();
 
@@ -3604,6 +3697,9 @@ async function handleRoute(request, context) {
     }
 
     if (route === "/settings/mail" && method === "PUT") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const body = await request.json();
 
       const updateData = {
@@ -3634,6 +3730,9 @@ async function handleRoute(request, context) {
     }
 
     if (route === "/settings/mail/test" && method === "POST") {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
+
       const body = await request.json();
       const testEmail = body.testEmail;
 
@@ -3716,20 +3815,10 @@ async function handleRoute(request, context) {
 
     // ============= BACKUP SYSTEM =============
     if (route === "/backup/stats" && method === "GET") {
-      // Check admin authorization
-      const authHeader = request.headers.get("x-user-id");
-      if (!authHeader) {
-        return handleCORS(
-          NextResponse.json(
-            { error: "Yetkilendirme gerekli" },
-            { status: 401 },
-          ),
-        );
-      }
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
 
-      const requestingUser = await db
-        .collection("calisanlar")
-        .findOne({ id: authHeader, deletedAt: null });
+      const requestingUser = auth.user;
       if (!requestingUser || !requestingUser.yoneticiYetkisi) {
         return handleCORS(
           NextResponse.json(
@@ -3776,20 +3865,10 @@ async function handleRoute(request, context) {
     }
 
     if (route === "/backup/export" && method === "GET") {
-      // Check admin authorization
-      const authHeader = request.headers.get("x-user-id");
-      if (!authHeader) {
-        return handleCORS(
-          NextResponse.json(
-            { error: "Yetkilendirme gerekli" },
-            { status: 401 },
-          ),
-        );
-      }
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
 
-      const requestingUser = await db
-        .collection("calisanlar")
-        .findOne({ id: authHeader, deletedAt: null });
+      const requestingUser = auth.user;
       if (!requestingUser || !requestingUser.yoneticiYetkisi) {
         return handleCORS(
           NextResponse.json(
@@ -3887,20 +3966,10 @@ async function handleRoute(request, context) {
     }
 
     if (route === "/backup/import" && method === "POST") {
-      // Check admin authorization
-      const authHeader = request.headers.get("x-user-id");
-      if (!authHeader) {
-        return handleCORS(
-          NextResponse.json(
-            { error: "Yetkilendirme gerekli" },
-            { status: 401 },
-          ),
-        );
-      }
+      const auth = await authenticateRequest(request);
+      if (auth.error) return handleCORS(NextResponse.json({ error: auth.error }, { status: auth.status }));
 
-      const requestingUser = await db
-        .collection("calisanlar")
-        .findOne({ id: authHeader, deletedAt: null });
+      const requestingUser = auth.user;
       if (!requestingUser || !requestingUser.yoneticiYetkisi) {
         return handleCORS(
           NextResponse.json(
