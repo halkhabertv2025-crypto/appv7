@@ -233,6 +233,14 @@ const Zimmetler = ({ user }) => {
     if (logo) {
       doc.addImage(logo, 'PNG', 15, yPos, 18.9, 21.6)
     }
+
+    // Top Right - Belge No (Zimmet No)
+    if (zimmet.zimmetNo) {
+      doc.setFontSize(10)
+      doc.setFont(fontName, 'bold')
+      doc.text(`Belge No: ${zimmet.zimmetNo}`, pageWidth - 15, yPos + 5, { align: 'right' })
+    }
+
     yPos = 45
 
     // 2. Başlık

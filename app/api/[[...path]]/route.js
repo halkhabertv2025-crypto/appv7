@@ -1990,8 +1990,22 @@ async function handleRoute(request, context) {
         );
       }
 
+      // Generate unique Zimmet No based on year and count
+      const currentYear = new Date().getFullYear();
+      const yearStart = new Date(`${currentYear}-01-01T00:00:00.000Z`);
+      const yearEnd = new Date(`${currentYear + 1}-01-01T00:00:00.000Z`);
+      
+      const count = await db.collection("zimmetler").countDocuments({
+        createdAt: {
+          $gte: yearStart,
+          $lt: yearEnd
+        }
+      });
+      const zimmetNo = `ZIM-${currentYear}-${String(count + 1).padStart(4, "0")}`;
+
       const zimmet = {
         id: uuidv4(),
+        zimmetNo: zimmetNo, // Belge Numarası eklendi
         envanterId: body.envanterId,
         calisanId: body.calisanId,
         zimmetTarihi: new Date(body.zimmetTarihi),
@@ -2071,10 +2085,24 @@ async function handleRoute(request, context) {
       }
 
       // Yetkili kontrolü - must be manager or admin
-      const yetkili = await db.collection("calisanlar").findOne({
+      let yetkili = await db.collection("calisanlar").findOne({
         id: body.iadeAlanYetkiliId,
         deletedAt: null,
       });
+
+      // If not found in calisanlar, check users collection (for Admin)
+      if (!yetkili) {
+        yetkili = await db.collection("users").findOne({
+          id: body.iadeAlanYetkiliId,
+          deletedAt: null,
+        });
+        
+        // Map roles from users collection to match the expected format
+        if (yetkili) {
+          yetkili.adminYetkisi = yetkili.role === "Admin" || yetkili.adminYetkisi;
+          yetkili.yoneticiYetkisi = yetkili.role === "Yönetici" || yetkili.yoneticiYetkisi;
+        }
+      }
 
       if (!yetkili) {
         return handleCORS(

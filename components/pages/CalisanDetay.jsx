@@ -202,6 +202,14 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
     if (logo) {
       doc.addImage(logo, 'PNG', 15, yPos, 18.9, 21.6)
     }
+
+    // Top Right - Belge No (Zimmet No)
+    if (zimmet.zimmetNo) {
+      doc.setFontSize(10)
+      doc.setFont(fontName, 'bold')
+      doc.text(`Belge No: ${zimmet.zimmetNo}`, pageWidth - 15, yPos + 5, { align: 'right' })
+    }
+
     yPos = 45
 
     // 2. Başlık
@@ -317,6 +325,14 @@ const CalisanDetay = ({ calisan, onClose, user }) => {
     if (logo) {
       doc.addImage(logo, 'PNG', 15, yPos, 18.9, 21.6)
     }
+
+    // Top Right - Belge No (Zimmet No)
+    if (aktifZimmetler.length > 0 && aktifZimmetler[0].zimmetNo) {
+      doc.setFontSize(10)
+      doc.setFont(fontName, 'bold')
+      doc.text(`Belge No: ${aktifZimmetler[0].zimmetNo}`, pageWidth - 15, yPos + 5, { align: 'right' })
+    }
+
     yPos = 45
 
     // 2. Başlık
