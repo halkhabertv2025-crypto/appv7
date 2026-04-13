@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useDeferredValue } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea'
 import { Plus, Pencil, Trash2, Search, Users, ChevronDown, ChevronRight } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { toTitleCase } from '@/lib/utils'
 
 const Departmanlar = ({ user }) => {
   const [departmanlar, setDepartmanlar] = useState([])
@@ -22,18 +23,23 @@ const Departmanlar = ({ user }) => {
   const [formData, setFormData] = useState({ ad: '', aciklama: '' })
   const { toast } = useToast()
 
+  // Check if user has full access (not just çalışan yetkisi)
+  const hasFullAccess = user?.yoneticiYetkisi || user?.adminYetkisi
+
   useEffect(() => {
     fetchDepartmanlar()
     fetchCalisanlar()
   }, [])
 
+  const deferredSearchTerm = useDeferredValue(searchTerm)
+
   useEffect(() => {
-    const filtered = departmanlar.filter(dep => 
-      dep.ad.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dep.aciklama.toLowerCase().includes(searchTerm.toLowerCase())
+    const filtered = departmanlar.filter(dep =>
+      dep.ad.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+      dep.aciklama.toLowerCase().includes(deferredSearchTerm.toLowerCase())
     )
     setFilteredDepartmanlar(filtered)
-  }, [searchTerm, departmanlar])
+  }, [deferredSearchTerm, departmanlar])
 
   const fetchDepartmanlar = async () => {
     try {
@@ -58,9 +64,17 @@ const Departmanlar = ({ user }) => {
     }
   }
 
-  const getCalisanlarByDept = (deptId) => {
-    return calisanlar.filter(c => c.departmanId === deptId && c.durum === 'Aktif')
-  }
+  // Optimize: Group employees by department once when calisanlar changes
+  const employeesByDept = React.useMemo(() => {
+    const map = {}
+    calisanlar.forEach(c => {
+      if (c.durum === 'Aktif') {
+        if (!map[c.departmanId]) map[c.departmanId] = []
+        map[c.departmanId].push(c)
+      }
+    })
+    return map
+  }, [calisanlar])
 
   const toggleDept = (deptId) => {
     setExpandedDepts(prev => ({ ...prev, [deptId]: !prev[deptId] }))
@@ -68,12 +82,12 @@ const Departmanlar = ({ user }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     try {
-      const url = editingDepartman 
+      const url = editingDepartman
         ? `/api/departmanlar/${editingDepartman.id}`
         : '/api/departmanlar'
-      
+
       const response = await fetch(url, {
         method: editingDepartman ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,11 +105,11 @@ const Departmanlar = ({ user }) => {
         return
       }
 
-      toast({ 
-        title: 'Başarılı', 
-        description: editingDepartman ? 'Departman güncellendi' : 'Departman oluşturuldu' 
+      toast({
+        title: 'Başarılı',
+        description: editingDepartman ? 'Departman güncellendi' : 'Departman oluşturuldu'
       })
-      
+
       setShowDialog(false)
       setFormData({ ad: '', aciklama: '' })
       setEditingDepartman(null)
@@ -149,10 +163,12 @@ const Departmanlar = ({ user }) => {
           <h2 className="text-2xl font-bold text-gray-800">Departmanlar</h2>
           <p className="text-gray-500">Departman listesi ve yönetimi</p>
         </div>
-        <Button onClick={openCreateDialog} className="bg-teal-500 hover:bg-teal-600">
-          <Plus size={20} className="mr-2" />
-          Yeni Departman Oluştur
-        </Button>
+        {hasFullAccess && (
+          <Button onClick={openCreateDialog} className="bg-teal-500 hover:bg-teal-600">
+            <Plus size={20} className="mr-2" />
+            Yeni Departman Oluştur
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -185,9 +201,9 @@ const Departmanlar = ({ user }) => {
                 </thead>
                 <tbody>
                   {filteredDepartmanlar.map((departman) => {
-                    const deptCalisanlar = getCalisanlarByDept(departman.id)
+                    const deptCalisanlar = employeesByDept[departman.id] || []
                     const isExpanded = expandedDepts[departman.id]
-                    
+
                     return (
                       <React.Fragment key={departman.id}>
                         <tr className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => toggleDept(departman.id)}>
@@ -204,24 +220,27 @@ const Departmanlar = ({ user }) => {
                             </span>
                           </td>
                           <td className="py-3 px-4 text-sm text-gray-600">{departman.aciklama || '-'}</td>
-                          <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-end space-x-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => openEditDialog(departman)}
-                              >
-                                <Pencil size={16} />
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleDelete(departman.id)}
-                              >
-                                <Trash2 size={16} />
-                              </Button>
-                            </div>
-                          </td>
+                          {hasFullAccess && (
+                            <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex justify-end space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openEditDialog(departman)}
+                                >
+                                  <Pencil size={16} />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDelete(departman.id)}
+                                >
+                                  <Trash2 size={16} />
+                                </Button>
+                              </div>
+                            </td>
+                          )}
+                          {!hasFullAccess && <td className="py-3 px-4"></td>}
                         </tr>
                         {isExpanded && deptCalisanlar.length > 0 && (
                           <tr>
@@ -272,7 +291,7 @@ const Departmanlar = ({ user }) => {
                 <Input
                   id="ad"
                   value={formData.ad}
-                  onChange={(e) => setFormData({ ...formData, ad: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, ad: toTitleCase(e.target.value) })}
                   required
                 />
               </div>

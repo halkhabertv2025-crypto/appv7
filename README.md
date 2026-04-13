@@ -1,4 +1,4 @@
-# HALK_v6s - Zimmet ve Envanter Takip Sistemi
+# HALK_v8.1 - Zimmet ve Envanter Takip Sistemi
 
 Web tabanlı bir zimmet ve envanter takip sistemi. İşyerindeki cihazları çalışanlara zimmetleyip takip edebilirsiniz.
 
@@ -115,7 +115,7 @@ Web tabanlı bir zimmet ve envanter takip sistemi. İşyerindeki cihazları çal
 
 - **Frontend:** Next.js 14 (App Router), React
 - **Backend:** Next.js API Routes
-- **Database:** MongoDB
+- **Database:** MongoDBa
 - **UI Framework:** Tailwind CSS + shadcn/ui
 - **Icons:** Lucide React
 - **PDF:** jsPDF
